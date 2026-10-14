@@ -110,6 +110,66 @@ check('host: exports the cordis plugin contract', async () => {
   }
 })
 
+check('version: the reported version matches the manifest', async (manifest) => {
+  // The literal is restated in source because importing package.json would sit
+  // outside `rootDir` and make the declaration output depend on the compiler's
+  // root inference. Two copies of a version number is exactly the kind of thing
+  // that drifts silently, so it is asserted rather than trusted.
+  const source = await read('src/index.ts')
+  const declared = source.match(/PLUGIN_VERSION\s*=\s*'([^']+)'/)
+  if (declared === null) throw new Error('src/index.ts must declare PLUGIN_VERSION')
+  if (declared[1] !== manifest.version) {
+    throw new Error(`PLUGIN_VERSION is ${declared[1]} but package.json says ${manifest.version}`)
+  }
+})
+
+/**
+ * Every peer this plugin declares, with the reason it is declared.
+ *
+ * Written out rather than inferred from import statements, because the honest
+ * reasons differ: `react` is imported for *types* in the client half and answered
+ * at runtime by the loader's module table, and `dsh-host-webserver` is never
+ * imported at all — the route is registered through a structurally declared
+ * interface. A regex over `from '…'` reports both as unused, which is how a check
+ * like this earns a reputation for crying wolf and gets deleted.
+ *
+ * The check is still worth having: it fails when the *manifest* and this table
+ * drift apart, which is what happens when a dependency is dropped from the code
+ * and left behind in the package metadata.
+ */
+const DECLARED_PEERS = new Map([
+  ['@deepseek-ai/cordis', 'types only; the client half imports Context for its plugin signature'],
+  ['@deepseek-ai/dsh-client-locale', 'the client entry registers dictionaries through ctx.locale'],
+  ['@deepseek-ai/dsh-client-ui-layout', 'declares the `main` slot the panel registers into; type-only import'],
+  ['@deepseek-ai/dsh-client-ui-slots', 'types only; SlotMap augmentation and the registry face'],
+  ['@deepseek-ai/dsh-host-webserver', 'the HTTP carrier, used through a structurally declared interface'],
+  ['@deepseek-ai/schemastery', 'the config schema, imported for value in src/config.ts'],
+  ['react', 'the client half, provided by the browser module loader'],
+])
+
+check('manifest: peerDependencies matches the documented peer set', async (manifest) => {
+  const declared = Object.keys(manifest.peerDependencies ?? {}).sort()
+  const documented = [...DECLARED_PEERS.keys()].sort()
+
+  const extra = declared.filter((name) => !DECLARED_PEERS.has(name))
+  const missing = documented.filter((name) => !declared.includes(name))
+
+  if (extra.length > 0) {
+    throw new Error(`peerDependencies declares ${extra.join(', ')}, which is not in DECLARED_PEERS — either the code needs it (add it with a reason) or the manifest kept a dependency the code dropped`)
+  }
+  if (missing.length > 0) {
+    throw new Error(`DECLARED_PEERS documents ${missing.join(', ')} but package.json does not declare it`)
+  }
+
+  // Every declared peer must also be marked optional: an optional peer is what
+  // lets the plugin load in a composition that lacks it, which is the whole point
+  // of resolving the web server lazily.
+  const required = declared.filter((name) => manifest.peerDependenciesMeta?.[name]?.optional !== true)
+  if (required.length > 0) {
+    throw new Error(`these peers must be optional, or the plugin cannot load without them: ${required.join(', ')}`)
+  }
+})
+
 check('host: the route prefix is a single constant', async () => {
   const routes = await read('src/web-routes.ts')
   const declared = routes.match(/ROUTE_PREFIX\s*=\s*'([^']+)'/)

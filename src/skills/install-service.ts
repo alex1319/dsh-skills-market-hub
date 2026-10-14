@@ -209,16 +209,34 @@ async function loadInstallPlan(
     throw new SkillOperationError(400, OPERATION_CODES.notInstallable, `no provider is configured for source ${source}`)
   }
 
+  // The author argument is forwarded only to a registry that pins on it. Passing
+  // it to one that ignores it would not change the answer, but it would make the
+  // log and the cache key record a pin that has no effect.
+  const pinnedOwner = target.pinsOwner ? options.owner : undefined
+
   const detail = await getMarketSkillDetail(source, slug, {
     force: true,
     allowStale: false,
-    ...(options.owner === undefined ? {} : { owner: options.owner }),
+    ...(pinnedOwner === undefined ? {} : { owner: pinnedOwner }),
   })
 
-  if (options.owner !== undefined && detail.author.handle !== options.owner) {
-    // The registry resolved a different author than the card named: installing
-    // now would write another author's bytes under the name the reader chose.
-    throw new SkillOperationError(409, OPERATION_CODES.notInstallable, 'the registry resolved a different author for this skill')
+  // Only a registry that treats `owner` as a *pin* can disagree with us here.
+  //
+  // Where it does (ClawHub, where one slug is shared across authors), a resolved
+  // author that is not the one the reader picked means the registry answered about
+  // a different skill, and writing it would install a stranger's bytes under the
+  // name on the card.
+  //
+  // Where it does not (SkillHub, whose detail route already fixes the account),
+  // the argument is ignored upstream and the two handles are different fields of
+  // the same account — the listing's account handle versus the detail's user
+  // handle. Comparing them refuses a skill that was installable all along.
+  if (target.pinsOwner && options.owner !== undefined && detail.author.handle !== options.owner) {
+    throw new SkillOperationError(
+      409,
+      OPERATION_CODES.notInstallable,
+      `the registry resolved this skill to the author "${detail.author.handle}", not "${options.owner}"; open it from the market list to install that author's version`,
+    )
   }
 
   const annotated = applyFileLimits(detail, detail.files)

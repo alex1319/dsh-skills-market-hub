@@ -455,6 +455,10 @@ export function normalizeFiles(files: unknown): MarketFileMeta[] {
 export const clawhubProvider: MarketProvider = {
   source: SOURCE,
 
+  // One slug is published under many authors here, so an `owner` argument selects
+  // which skill is meant rather than merely labelling it.
+  pinsOwner: true,
+
   async list({ cursor, limit, signal }) {
     const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, limit))
     const { value } = await providerFetchJson<RawList>(SOURCE, providerUrl(SOURCE, '/api/v1/skills'), {

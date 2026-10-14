@@ -52,6 +52,10 @@ function stubProvider(overrides = {}) {
 
   return {
     source: 'clawhub',
+    // The default stub stands in for ClawHub, which *does* pin on the owner
+    // argument — that is what makes the pin-mismatch case below a real assertion
+    // rather than a branch nothing reaches.
+    pinsOwner: overrides.pinsOwner ?? true,
     async list() { return { items: [] } },
     async search() { return { items: [] } },
     async detail(slug) {

@@ -1,6 +1,6 @@
 {
   "name": "dsh-skills-market-hub",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "DSH 技能市场：在 DeepSeek Harness 桌面端侧栏浏览、预览、安装与卸载 ClawHub 与 SkillHub 的第三方技能。",
   "type": "module",
@@ -56,7 +56,6 @@
     "@deepseek-ai/cordis": "^4.0.2",
     "@deepseek-ai/dsh-client-locale": "0.2.0-rc.2",
     "@deepseek-ai/dsh-client-ui-layout": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-client-ui-primitives": "0.2.0-rc.2",
     "@deepseek-ai/dsh-client-ui-slots": "0.2.0-rc.2",
     "@deepseek-ai/dsh-host-webserver": "0.2.0-rc.2",
     "@deepseek-ai/schemastery": "^3.18.2",
@@ -70,9 +69,6 @@
       "optional": true
     },
     "@deepseek-ai/dsh-client-ui-layout": {
-      "optional": true
-    },
-    "@deepseek-ai/dsh-client-ui-primitives": {
       "optional": true
     },
     "@deepseek-ai/dsh-client-ui-slots": {

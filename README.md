@@ -2,6 +2,8 @@
 
 **DeepSeek Harness 的技能市场插件**：在桌面端侧栏浏览 ClawHub 与 SkillHub 上的技能，读说明、看文件、确认后安装到本机，并在同一个面板里管理已安装的技能。
 
+当前版本 **0.1.1**（[更新说明](./CHANGELOG.md)）。已在 DeepSeek Harness `0.2.0-rc.2` 上实测运行。
+
 本插件是独立的社区项目。技能由各自的作者发布，版权归原作者，以每个技能自己声明的许可证为准；本仓库的 MIT 许可证只覆盖插件自身的代码。
 
 ---
@@ -134,12 +136,16 @@ src/
 ### 测试
 
 ```bash
+pnpm check                            # typecheck + build + 契约校验 + 271 项测试 + 打包闭包
 node --test tests/*.test.mjs          # 全部离线测试
-SMH_LIVE=1 node --test tests/live-providers.test.mjs   # 真实上游集成
+SMH_LIVE=1 node --test tests/live-providers.test.mjs   # 真实上游集成（需联网）
 node scripts/capture-fixtures.mjs     # 重新抓取上游响应夹具
+node scripts/pack-check.mjs           # 打包产物装进空目录后是否还能加载
 ```
 
 上游响应夹具（`tests/fixtures/market/`）由真实注册表抓取，provider 归一化测试全部对着它们跑。夹具的内容会随上游变化（下载计数、首页排名），所以**断言从夹具推导，不写死字面量** —— 重新抓取后仍然应该全绿，除非上游真的改了字段名。
+
+真实上游集成测试**默认跳过**，因为它需要网络、比其余测试慢，而且上游故障不该被读成这个插件的回归。发版前跑一次：夹具是照片，它证明归一化匹配某个时刻抓到的形状，不证明注册表今天仍然这样回答。
 
 ---
 
@@ -148,3 +154,5 @@ node scripts/capture-fixtures.mjs     # 重新抓取上游响应夹具
 - 面板不渲染 Markdown：`description` 按作者所写的预格式文本展示。共享的 Markdown 渲染器会把整个 UI 原语包拖进 bundle（见上文），而自带一个 Markdown 子集解析器再声称它忠实还原，比直接展示原文更糟。「文件」页给出带 frontmatter 的完整源文。
 - 没有随包发布的策展目录：首页即实时列表。因此首屏依赖上游可用性（失败时给出重试，而不是空白页）。
 - ClawHub 的 slug 跨作者共享。不带 `owner` 的详情请求在上游有歧义时返回 409 与本插件抛出的候选作者列表；面板从卡片或详情页带上作者，从而避免装到另一个作者的字节。
+- **只有 ClawHub 把 `owner` 当 pin 解析。** SkillHub 的详情路由本身已经确定账户，`owner` 参数不被上游解释，因此不做作者一致性校验 —— 做了会把本来可装的技能全部拒掉（0.1.0 的真实缺陷，见 [CHANGELOG](./CHANGELOG.md)）。两个 provider 的差别由 `pinsOwner` 显式声明，而不是靠猜。
+- **SkillHub 的偏移分页在页边界会重叠一项。** 直接请求原始接口同样如此，属于上游行为，游标层无法消除；由面板按 id 去重，读者不会看到重复卡片。

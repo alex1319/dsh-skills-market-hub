@@ -246,6 +246,21 @@ export function parseOffsetCursor(cursor: string | undefined): number {
 /** The provider contract the aggregation layer drives. */
 export interface MarketProvider {
   readonly source: MarketSource
+  /**
+   * Whether this registry interprets an `owner` argument as a **pin**.
+   *
+   * True only where a slug alone does not identify a skill: ClawHub publishes the
+   * same slug under many authors, so an `owner` there selects *which* skill is
+   * meant, and a resolved author that disagrees is a different skill.
+   *
+   * False where the account is already part of the address (SkillHub's detail
+   * route is `/skills/{slug}` and its account is fixed by the request). There the
+   * panel's `owner` is display metadata, the argument is ignored upstream, and
+   * comparing it against the resolved author compares two unrelated handles — the
+   * listing's account handle against the detail's user handle — which is how a
+   * perfectly installable skill gets refused.
+   */
+  readonly pinsOwner: boolean
   list(params: { cursor?: string; limit: number; signal?: AbortSignal }): Promise<{ items: NormalizedSkill[]; nextCursor?: string; total?: number }>
   search(params: { q: string; cursor?: string; limit: number; signal?: AbortSignal }): Promise<{ items: NormalizedSkill[]; nextCursor?: string; total?: number }>
   detail(slug: string, params: { owner?: string; signal?: AbortSignal }): Promise<NormalizedSkillDetail>
