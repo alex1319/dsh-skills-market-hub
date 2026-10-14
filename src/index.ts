@@ -37,6 +37,7 @@ import {
   withProviderConfiguration,
 } from './market/provider-fetch.ts'
 import { resetInstallLocks } from './skills/install-service.ts'
+import { detectStaleBuild, staleBuildWarning } from './stale-build.ts'
 import {
   readJsonBody,
   registerSkillsMarketHubRoutes,
@@ -73,7 +74,7 @@ export { Config }
  * compiler's root inference. `scripts/verify.mjs` asserts this literal matches
  * the manifest instead.
  */
-export const PLUGIN_VERSION = '0.1.1'
+export const PLUGIN_VERSION = '0.1.2'
 
 /** Web-server service keys, newest first (older compositions spell it `httpServer`). */
 const WEB_SERVER_KEYS = ['webServer', 'httpServer'] as const
@@ -232,8 +233,14 @@ export function apply(ctx: Context, config?: Partial<SkillsMarketHubConfig>): vo
   })
 
   ctx.logger.info(
-    `skills-market-hub: ready (root=${resolved.skillsRoot ?? '$DSH_HOME/skills'}, install=${dshHome}, uninstall=${resolved.allowUninstall ? 'on' : 'off'}, cache=${resolved.cacheTtlMinutes}m)`,
+    `skills-market-hub: ready (v${PLUGIN_VERSION}, root=${resolved.skillsRoot ?? '$DSH_HOME/skills'}, install=${dshHome}, uninstall=${resolved.allowUninstall ? 'on' : 'off'}, cache=${resolved.cacheTtlMinutes}m)`,
   )
+
+  // A `file:` install is a copy, so the code that just loaded can be older than
+  // the package beside it. Saying so once at activation is the difference between
+  // "the fix did not work" and "the fix is not what is running".
+  const stale = detectStaleBuild(PLUGIN_VERSION, import.meta.url, 'dsh-skills-market-hub')
+  if (stale.stale) ctx.logger.warn(`skills-market-hub: ${staleBuildWarning(stale)}`)
 
   // The panel's status bar reads this on first paint; touching it here means the
   // first response already carries a real shape rather than an empty object.
