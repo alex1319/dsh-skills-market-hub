@@ -31,12 +31,42 @@ dsh plugin --profile desktop add <本包路径或包名> -w
 
 本插件只向 profile 的插件行**插入自己一行**，不替换任何官方组件。想移除时删掉那一行即可。
 
+### 修改代码后，profile 需要重新安装一次
+
+**这是最容易踩的一个坑**：用 `file:` 指向本地目录安装时，包管理器放进 profile 的不是软链接，而是**安装那一刻的拷贝**。之后你改源码、重新构建，profile 里仍然是旧版本 —— 而插件"看起来装好了"，所以这个现象很难归因。
+
+每次改完代码、重新 `pnpm build` 之后：
+
+```bash
+cd ~/.dsh/profiles/desktop
+pnpm install --force --no-frozen-lockfile
+```
+
+然后重启桌面端。
+
+`--force` 不能省：包管理器按 `file:` 路径缓存依赖，不加它就会认为"路径没变，无需处理"，拷贝依旧是旧的。
+
+判断 profile 里到底是哪一份，直接比哈希（PowerShell，两边应输出同一个值）：
+
+```powershell
+Get-FileHash "$env:USERPROFILE\.dsh\profiles\desktop\node_modules\dsh-skills-market-hub\package.json" -Algorithm SHA256
+Get-FileHash "D:\projects\dsh\dsh-skills-market-hub\package.json" -Algorithm SHA256
+```
+
+包的版本号也能直接看出来（Windows 上 `require()` 会被反斜杠路径绊住，所以这里读文件再解析）：
+
+```powershell
+node -e "console.log(JSON.parse(require('fs').readFileSync(process.env.USERPROFILE+'/.dsh/profiles/desktop/node_modules/dsh-skills-market-hub/package.json','utf8')).version)"
+```
+
+改代码时不建议改用 `git+ssh://…` 安装：那条路走的是仓库里提交的 `lib/`，每次改动都要先提交推送再重新拉取，联调阶段反而更慢。等插件稳定、或要部署到别的机器时再换。
+
 ### 从源码构建
 
 ```bash
 pnpm install
 pnpm build      # tsc×2 + esbuild，产出 lib/
-pnpm check      # typecheck + build + 契约校验 + 全部测试
+pnpm check      # typecheck + build + 契约校验 + 全部测试 + 打包闭包
 ```
 
 ---
