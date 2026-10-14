@@ -21,6 +21,11 @@ import { skillhubProvider } from '../lib/market/skillhub-provider.js'
 import { configureProviderFetch, resetProviderFetchConfiguration } from '../lib/market/provider-fetch.js'
 import { installMarketSkill, resetInstallLocks, uninstallMarketSkill } from '../lib/skills/install-service.js'
 import { setInstalledLookup, setMarketCache, setProviders } from '../lib/market/market-service.js'
+import {
+  categoryVocabulary,
+  ensureCategoryVocabulary,
+  resetCategoryVocabulary,
+} from '../lib/market/taxonomy.js'
 import { scanInstalledSkills } from '../lib/skills/installed.js'
 import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
@@ -206,6 +211,43 @@ describe('live registries', { skip: enabled ? false : 'set SMH_LIVE=1 to run aga
     } finally {
       await rm(root, { recursive: true, force: true })
       setInstalledLookup({ has: () => false, info: () => undefined })
+      resetProviderFetchConfiguration()
+    }
+  })
+
+  it('reads the classification vocabulary and labels a real skill with it', LIVE_TIMEOUT, async () => {
+    resetCategoryVocabulary()
+    try {
+      await ensureCategoryVocabulary()
+      const vocabulary = categoryVocabulary()
+      assert.ok(vocabulary.size > 0, 'the registry published no classifications; the label lookup has no source')
+
+      for (const entry of vocabulary.values()) {
+        assert.ok(entry.key !== '')
+        assert.ok(entry.name !== '', `the entry "${entry.key}" has no label in either language`)
+      }
+
+      // The end-to-end claim: a real skill's classification keys resolve to words.
+      // Listing first is what primes the vocabulary in production, so this asserts
+      // the labels the panel would actually print on the cards it is about to show.
+      const page = await skillhubProvider.list({ limit: 10 })
+      const refs = page.items.flatMap((item) => item.categories ?? [])
+      assert.ok(refs.length > 0, 'no skill on page one carried a classification; the field may have moved')
+
+      for (const ref of refs) {
+        assert.equal(typeof ref.key, 'string')
+        assert.ok(ref.key !== '', 'a classification without a key cannot be resolved later')
+      }
+
+      // Sub-category labels come from the skill itself, so they resolve whatever
+      // the vocabulary says; only some top-level keys need the lookup.
+      const labelled = refs.filter((ref) => ref.labelZh !== undefined || ref.labelEn !== undefined)
+      assert.ok(
+        labelled.length > 0,
+        `not one of ${refs.length} classifications resolved to a label: the vocabulary lookup is not reaching the provider`,
+      )
+    } finally {
+      resetCategoryVocabulary()
       resetProviderFetchConfiguration()
     }
   })

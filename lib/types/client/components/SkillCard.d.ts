@@ -6,7 +6,7 @@
  * things a reader weighs before opening a skill. Everything else waits for the
  * detail view.
  */
-import type { NormalizedSkill } from '../api.ts';
+import type { CategoryRef, NormalizedSkill } from '../api.ts';
 export interface SkillCardProps {
     skill: NormalizedSkill;
     busy: boolean;
@@ -14,6 +14,16 @@ export interface SkillCardProps {
     onInstall: () => void;
 }
 export declare function SkillCard({ skill, busy, onOpen, onInstall }: SkillCardProps): import("react").JSX.Element;
+/**
+ * One classification chip.
+ *
+ * `neutral` rather than a status tone: a category is not a verdict, and reusing
+ * the security palette for it would make a benign skill look flagged. The tooltip
+ * carries the registry's own key, which is the stable name behind the label.
+ */
+export declare function CategoryPill({ category }: {
+    category: CategoryRef;
+}): import("react").JSX.Element;
 export interface SkillGridProps {
     skills: NormalizedSkill[];
     installingIds: string[];

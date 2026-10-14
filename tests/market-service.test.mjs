@@ -13,11 +13,15 @@ import {
   annotatePage,
   applyFileLimits,
   filterSkills,
+  listMarketCategories,
   paginate,
   parseOffsetCursor,
   resetInstalledLookup,
   setInstalledLookup,
 } from '../lib/market/market-service.js'
+import { resetCategoryVocabulary, setCategoryVocabulary, CATEGORY_VOCABULARY_PATH } from '../lib/market/taxonomy.js'
+import { configureProviderFetch, resetProviderFetchConfiguration } from '../lib/market/provider-fetch.js'
+import { createServer } from 'node:http'
 import { MARKET_LIMITS, skillId } from '../lib/market/types.js'
 
 /** A minimal upstream entry; only the fields the rules read. */
@@ -246,5 +250,70 @@ describe('paging', () => {
     assert.equal(parseOffsetCursor('catalog:abc'), 0)
     assert.equal(parseOffsetCursor('catalog:-1'), 0)
     assert.equal(parseOffsetCursor('catalog:3'), 3)
+  })
+})
+
+describe('the classification endpoint', () => {
+  afterEach(() => { resetCategoryVocabulary() })
+
+  it('serves the vocabulary in the registry\u2019s own order', async () => {
+    // Primed rather than fetched: this test is about what the endpoint answers,
+    // and the fetch behind it is covered by the live suite.
+    setCategoryVocabulary([
+      { key: 'later', name: '后一个', nameEn: 'Later', sortOrder: 20, level: 1 },
+      { key: 'first', name: '前一个', nameEn: 'First', sortOrder: 10, level: 1 },
+    ])
+
+    const { items, status } = await listMarketCategories()
+    assert.deepEqual(items.map((entry) => entry.key), ['first', 'later'])
+    assert.equal(status.status, 'ok')
+    assert.equal(status.fromCache, true)
+  })
+
+  it('answers with an empty list rather than failing when nothing is known', async () => {
+    // The registry is pointed at a port nothing listens on, so the read fails the
+    // way an offline machine's would — and the endpoint must still answer. Without
+    // this, the assertion would depend on what the live registry happens to return.
+    configureProviderFetch({ skillhubBaseUrl: 'http://127.0.0.1:9', retries: 0, timeoutMs: 500 })
+    try {
+      const { items, status } = await listMarketCategories()
+      assert.deepEqual(items, [])
+      assert.equal(status.fromCache, false)
+    } finally {
+      resetProviderFetchConfiguration()
+    }
+  })
+
+  it('fetches the vocabulary from the route that actually serves it', async () => {
+    // The bug this pins: the version-less `/api/categories` answers 405 with an
+    // empty body, which is indistinguishable from "the registry publishes none" —
+    // so a wrong path here degrades silently instead of failing. The live suite
+    // caught it; this test makes it catchable offline, by pointing the source at a
+    // local server and asserting both the request path and the parsed result.
+    const requests = []
+    const server = createServer((req, res) => {
+      requests.push(req.url)
+      if (req.url !== CATEGORY_VOCABULARY_PATH) {
+        // Exactly what the real registry does for the wrong spelling.
+        res.writeHead(405).end()
+        return
+      }
+      res.writeHead(200, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ count: 1, items: [{ key: 'design-media', name: '设计多媒体', nameEn: 'Design & Media', sortOrder: 50, active: true }] }))
+    })
+    await new Promise((resolve) => { server.listen(0, '127.0.0.1', resolve) })
+    const { port } = server.address()
+    configureProviderFetch({ skillhubBaseUrl: `http://127.0.0.1:${port}`, retries: 0, timeoutMs: 5_000 })
+
+    try {
+      const { items } = await listMarketCategories()
+      assert.deepEqual(requests, [CATEGORY_VOCABULARY_PATH], 'the vocabulary must be read from its own route')
+      assert.deepEqual(items.map((entry) => entry.key), ['design-media'])
+      assert.equal(items[0].name, '设计多媒体')
+      assert.equal(items[0].nameEn, 'Design & Media')
+    } finally {
+      resetProviderFetchConfiguration()
+      await new Promise((resolve) => { server.close(resolve) })
+    }
   })
 })

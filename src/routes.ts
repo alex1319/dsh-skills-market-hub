@@ -164,9 +164,9 @@ export function createRoutes(): Map<string, RouteHandler> {
     sendJson(res, 200, { sources: getSourceStatus() })
   })
 
-  routes.set('categories', ({ method, res }) => {
+  routes.set('categories', async ({ method, res }) => {
     requireMethod(method, 'GET')
-    sendJson(res, 200, listMarketCategories())
+    sendJson(res, 200, await listMarketCategories())
   })
 
   routes.set('skills', async ({ url, method, segments, res }) => {

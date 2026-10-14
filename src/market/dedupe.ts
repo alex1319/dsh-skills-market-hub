@@ -51,7 +51,11 @@ export function dedupeSkills(skills: readonly NormalizedSkill[]): NormalizedSkil
   for (const skill of skills) {
     const index = merged.findIndex((candidate) => candidate.id !== skill.id && isMirrorOf(skill, candidate))
     if (index === -1) {
-      merged.push({ ...skill, tags: [...skill.tags] })
+      merged.push({
+        ...skill,
+        tags: [...skill.tags],
+        ...(skill.categories === undefined ? {} : { categories: [...skill.categories] }),
+      })
       continue
     }
 
@@ -69,6 +73,9 @@ export function dedupeSkills(skills: readonly NormalizedSkill[]): NormalizedSkil
           }
         : {}),
       ...(original.tags.length === 0 && skill.tags.length > 0 ? { tags: [...skill.tags] } : {}),
+      ...((original.categories ?? []).length === 0 && (skill.categories ?? []).length > 0
+        ? { categories: [...skill.categories!] }
+        : {}),
     }
   }
 

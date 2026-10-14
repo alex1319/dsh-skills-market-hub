@@ -28,6 +28,20 @@ export interface SecurityReport {
   summary?: string
 }
 
+/**
+ * One classification chip.
+ *
+ * Both labels travel rather than one pre-chosen string, so the panel renders in
+ * whichever language the shell is using without the host cache having to know
+ * which one that is. `key` is the registry's stable identifier and is the last
+ * resort for display — see `categoryLabelText` in `ui.tsx`.
+ */
+export interface CategoryRef {
+  key: string
+  labelZh?: string
+  labelEn?: string
+}
+
 export interface NormalizedSkill {
   id: string
   source: MarketSource
@@ -37,6 +51,7 @@ export interface NormalizedSkill {
   author: { handle: string; displayName?: string; avatarUrl?: string }
   stats: { downloads: number; installs?: number; stars?: number }
   tags: string[]
+  categories?: CategoryRef[]
   version?: string
   updatedAt?: number
   iconUrl?: string
@@ -90,6 +105,18 @@ export interface MarketListResult {
   nextCursor: string | null
   total?: number
   sources: Record<MarketSource, SourceStatusInfo>
+}
+
+/** One classification in a registry's published vocabulary. */
+export interface MarketCategory {
+  key: string
+  /** Chinese label; empty when the registry publishes none. */
+  name: string
+  /** English label, when the registry publishes one. */
+  nameEn?: string
+  sortOrder: number
+  parent?: string
+  level: number
 }
 
 /**
@@ -301,6 +328,12 @@ export async function fetchSkillFile(
 export async function fetchSourceStatus(signal?: AbortSignal): Promise<Record<MarketSource, SourceStatusInfo>> {
   const payload = await getJson<{ sources: Record<MarketSource, SourceStatusInfo> }>('/status', signal)
   return payload.sources
+}
+
+/** The registries' classification vocabulary, for labelling cards and the filter bar. */
+export async function fetchCategories(signal?: AbortSignal): Promise<MarketCategory[]> {
+  const payload = await getJson<{ items: MarketCategory[]; status: SourceStatusInfo }>('/categories', signal)
+  return payload.items
 }
 
 /**

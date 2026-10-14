@@ -156,6 +156,101 @@ describe('client panel render', () => {
     assert.match(html, /securityFlagged/)
   })
 
+  it('renders classification chips on a card', async () => {
+    const { SkillGrid } = await import('../lib/client/components/SkillCard.js')
+    const { TranslateProvider } = await import('../lib/client/translate.js')
+
+    const html = renderToStaticMarkup(
+      React.createElement(TranslateProvider, { t, locale: 'zh' }, React.createElement(SkillGrid, {
+        skills: [skill({
+          categories: [
+            { key: 'design-poster', labelZh: '海报设计', labelEn: 'Poster Design' },
+            { key: 'content-creation', labelZh: '内容创作', labelEn: 'Content Creation' },
+          ],
+        })],
+        installingIds: [],
+        onOpen: () => undefined,
+        onInstall: () => undefined,
+      })),
+    )
+
+    // The label the reader sees, and the stable key behind it.
+    assert.match(html, /海报设计/)
+    assert.match(html, /title="design-poster"/)
+  })
+
+  it('shows the registry label in the reader\u2019s language, not a fixed one', async () => {
+    const { SkillGrid } = await import('../lib/client/components/SkillCard.js')
+    const { TranslateProvider } = await import('../lib/client/translate.js')
+
+    const categories = [{ key: 'design-poster', labelZh: '海报设计', labelEn: 'Poster Design' }]
+    const render = (locale) => renderToStaticMarkup(
+      React.createElement(TranslateProvider, { t, locale }, React.createElement(SkillGrid, {
+        skills: [skill({ categories })],
+        installingIds: [],
+        onOpen: () => undefined,
+        onInstall: () => undefined,
+      })),
+    )
+
+    assert.match(render('zh'), /海报设计/)
+    assert.match(render('en'), /Poster Design/)
+  })
+
+  it('falls back through the labels and finally to the key, never to nothing', async () => {
+    const { SkillGrid } = await import('../lib/client/components/SkillCard.js')
+    const { TranslateProvider } = await import('../lib/client/translate.js')
+
+    const html = renderToStaticMarkup(
+      React.createElement(TranslateProvider, { t, locale: 'zh' }, React.createElement(SkillGrid, {
+        skills: [skill({
+          categories: [
+            // Label in the other language only: still better than the key.
+            { key: 'knowledge', labelEn: 'Knowledge' },
+            // No label at all: the key, de-hyphenated.
+            { key: 'business-ops' },
+          ],
+        })],
+        installingIds: [],
+        onOpen: () => undefined,
+        onInstall: () => undefined,
+      })),
+    )
+
+    assert.match(html, /Knowledge/)
+    assert.match(html, /Business Ops/)
+    assert.match(html, /title="business-ops"/, 'the stable key stays reachable on hover')
+  })
+
+  it('caps the chips on a card and names the overflow', async () => {
+    const { SkillGrid } = await import('../lib/client/components/SkillCard.js')
+    const { TranslateProvider } = await import('../lib/client/translate.js')
+
+    const html = renderToStaticMarkup(
+      React.createElement(TranslateProvider, { t, locale: 'en' }, React.createElement(SkillGrid, {
+        skills: [skill({
+          categories: [
+            { key: 'a-one', labelEn: 'Alpha' },
+            { key: 'b-two', labelEn: 'Beta' },
+            { key: 'c-three', labelEn: 'Gamma' },
+            { key: 'd-four', labelEn: 'Delta' },
+          ],
+        })],
+        installingIds: [],
+        onOpen: () => undefined,
+        onInstall: () => undefined,
+      })),
+    )
+
+    assert.match(html, /Alpha/)
+    assert.match(html, /Beta/)
+    // The label is read out of the chip's own body, not searched for across the
+    // document: the overflow tooltip names the hidden labels on purpose.
+    assert.ok(!/>Gamma</.test(html), `a card must stay scannable:\n${html}`)
+    assert.match(html, />\+2</, 'the hidden count is shown')
+    assert.match(html, /title="Gamma \/ Delta"/, 'and the hidden labels are named on hover')
+  })
+
   it('renders the detail view across all four tabs', async () => {
     const { MarketDetail } = await import('../lib/client/components/MarketDetail.js')
     const { TranslateProvider } = await import('../lib/client/translate.js')

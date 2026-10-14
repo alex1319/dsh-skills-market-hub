@@ -200,9 +200,17 @@ export declare function getMarketFileContent(source: MarketSource, slug: string,
 export declare function listMarketSkills(query: MarketQuery, cursor: MarketCursor, status: Record<MarketSource, SourceStatusInfo>): Promise<MarketListResult>;
 /** Sources the plugin can serve, for the status endpoint and the panel's filter bar. */
 export declare function configuredSources(): MarketSource[];
-/** Curated category list; empty until a catalogue ships with the package. */
-export declare function listMarketCategories(): {
+/**
+ * The classification vocabulary, for the panel's filter bar.
+ *
+ * Read through the same cache and TTL as the labels on a card, so the dropdown
+ * and the chips can never disagree about what the categories are called. An
+ * unreachable registry answers with the empty vocabulary this endpoint shipped
+ * with, rather than a failure: the filter bar degrades to "no categories known",
+ * which is true.
+ */
+export declare function listMarketCategories(): Promise<{
     items: MarketCategory[];
     status: SourceStatusInfo;
-};
+}>;
 //# sourceMappingURL=market-service.d.ts.map

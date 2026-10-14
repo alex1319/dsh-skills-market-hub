@@ -86,9 +86,20 @@ export interface SelectFieldProps<T extends string> {
     }>;
     onChange: (value: T) => void;
     ariaLabel: string;
+    /**
+     * What this dropdown filters by, in a sentence.
+     *
+     * A closed-set control has no room for a visible label of its own — the two
+     * dropdowns beside the search box rendered as a pair of identical "All" chips,
+     * which told the reader nothing about which axis either one filtered. So the
+     * question is answered twice: the option labels now name their axis ("Any
+     * verdict" / "Any state"), and this text is the tooltip and the accessible
+     * description for anyone who still has to ask.
+     */
+    ariaDescription?: string;
 }
 /** One closed-set dropdown, used for the filter bar. */
-export declare function SelectField<T extends string>({ value, options, onChange, ariaLabel }: SelectFieldProps<T>): import("react").JSX.Element;
+export declare function SelectField<T extends string>({ value, options, onChange, ariaLabel, ariaDescription }: SelectFieldProps<T>): import("react").JSX.Element;
 /** A small status pill: install state, security verdict, source. */
 export declare function Pill({ children, tone, title }: {
     children: ReactNode;
@@ -123,4 +134,24 @@ export declare function fileSizeText(bytes: number): string;
 export declare function shortDate(at: number | undefined): string | undefined;
 /** Format a large count compactly (1.2k, 3.4M). */
 export declare function countText(value: number): string;
+/**
+ * The label to print for one classification.
+ *
+ * Preference order, and the reason for it:
+ *  1. the registry's label in the reader's language;
+ *  2. the registry's label in the other language — a Chinese label under an
+ *     English UI is still more informative than `design-poster`;
+ *  3. the key itself, de-hyphenated, because a raw `business-ops` next to a
+ *     proper chip reads as a rendering bug.
+ *
+ * The *key* is never hidden behind a label: it is what a future category filter
+ * and any support question will use, so `CategoryRef` carries both.
+ */
+export declare function categoryLabelText(ref: {
+    key: string;
+    labelZh?: string;
+    labelEn?: string;
+}, locale: 'zh' | 'en'): string;
+/** `design-media` → `Design Media`; the last resort before showing nothing. */
+export declare function humanizeKey(key: string): string;
 //# sourceMappingURL=ui.d.ts.map

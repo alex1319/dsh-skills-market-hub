@@ -339,6 +339,63 @@ describe('skills-market-hub HTTP surface', () => {
     })
   })
 
+  describe('the classification endpoint', () => {
+    let host
+
+    before(async () => {
+      // Both providers unreachable, and the vocabulary primed by hand: this block
+      // is about what the endpoint *answers*, and leaving either to the network
+      // would make the assertions depend on a live registry.
+      const { setCategoryVocabulary } = await import('../lib/market/taxonomy.js')
+      setCategoryVocabulary([
+        { key: 'design-media', name: '设计多媒体', nameEn: 'Design & Media', sortOrder: 50, level: 1 },
+        { key: 'content-creation', name: '内容创作', nameEn: 'Content Creation', sortOrder: 20, level: 1 },
+      ])
+      host = await bootPlugin(plugin, {
+        config: {
+          clawhubBaseUrl: 'http://127.0.0.1:9',
+          skillhubBaseUrl: 'http://127.0.0.1:9',
+          timeoutMs: 1_500,
+          requestRetries: 0,
+        },
+      })
+    })
+
+    after(async () => {
+      await host.close()
+      const { resetCategoryVocabulary } = await import('../lib/market/taxonomy.js')
+      resetCategoryVocabulary()
+    })
+
+    it('serves the vocabulary the registry published, in its own order', async () => {
+      const response = await request(host.base, `${ROUTE_PREFIX}/categories`)
+      assert.equal(response.status, 200)
+      assert.deepEqual(response.body.items.map((entry) => entry.key), ['content-creation', 'design-media'])
+      assert.equal(response.body.items[1].name, '设计多媒体')
+      assert.equal(response.body.items[1].nameEn, 'Design & Media')
+    })
+
+    it('answers with an empty list rather than failing when the vocabulary is unreadable', async () => {
+      // Both registries are pointed at a dead port, so the read fails the way an
+      // offline machine's would. The endpoint must still answer 200: an empty
+      // vocabulary is a true answer, and a request that failed here would take the
+      // panel's filter bar down with it.
+      const { resetCategoryVocabulary } = await import('../lib/market/taxonomy.js')
+      resetCategoryVocabulary()
+
+      const response = await request(host.base, `${ROUTE_PREFIX}/categories`)
+      assert.equal(response.status, 200)
+      assert.deepEqual(response.body.items, [])
+
+      // Restore the primed vocabulary for any later test in this block.
+      const { setCategoryVocabulary } = await import('../lib/market/taxonomy.js')
+      setCategoryVocabulary([
+        { key: 'design-media', name: '设计多媒体', nameEn: 'Design & Media', sortOrder: 50, level: 1 },
+        { key: 'content-creation', name: '内容创作', nameEn: 'Content Creation', sortOrder: 20, level: 1 },
+      ])
+    })
+  })
+
   describe('market reads against an unreachable registry', () => {
     let host
 

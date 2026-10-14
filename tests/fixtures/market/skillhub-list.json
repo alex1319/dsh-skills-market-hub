@@ -3,161 +3,198 @@
   "data": {
     "skills": [
       {
-        "category": "design-media",
+        "category": "content-creation",
+        "channelPricing": {
+          "currency": "CNY",
+          "payChannel": "alipay",
+          "price": "1.90"
+        },
         "claim_state": "unclaimed",
         "claimable": false,
         "claimed_user_handle": null,
-        "created_at": 1786193993961,
-        "description": "Apple 官网设计风格完整指南——配色（黑白灰+高饱和点缀）、 排版（SF Pro Display/Text，超大字重标题）、布局（垂直卡片流+粘性滚动）、 交互（渐进式动画+视差滚动）、影像（3D 产品渲染+极简场景）、 文案（短句+留白呼吸）。内置页面生成器（输入产品信息一键产出 Apple 风格 HTML）和风格检查器（给现有页面打分）。v1.2 新增 3 个可直接打开的示例页（examples/）、增强版生成模板（规格参数表+ 滚动渐显+小屏适配）、38 项脚本测试。适用于复制 Apple 风格的页面设计、 PPT 排版、品牌视觉策划。当用户提到「Apple 风格」「苹果设计」 「极简科技感」「Keynote 风格」时触发。",
-        "description_zh": "Apple 官网设计风格完整指南——配色（黑白灰+高饱和点缀）、 排版（SF Pro Display/Text，超大字重标题）、布局（垂直卡片流+粘性滚动）、 交互（渐进式动画+视差滚动）、影像（3D 产品渲染+极简场景）、 文案（短句+留白呼吸）。内置页面生成器（输入产品信息一键产出 Apple 风格 HTML）和风格检查器（给现有页面打分）。v1.2 新增 3 个可直接打开的示例页（examples/）、增强版生成模板（规格参数表+ 滚动渐显+小屏适配）、38 项脚本测试。适用于复制 Apple 风格的页面设计、 PPT 排版、品牌视觉策划。当用户提到「Apple 风格」「苹果设计」 「极简科技感」「Keynote 风格」时触发。",
-        "downloads": 429,
-        "homepage": "https://api.skillhub.cn/user_2af611f4/apple-design-style",
-        "iconUrl": null,
+        "created_at": 1790427309763,
+        "description": "【口播脚本专家】专治「对着镜头不知道说什么」：选题→黄金三秒钩子→信息结构→口语化稿→节奏标注→结尾落点。用户给一个主题，直接产出可直接念的口播脚本（含时间轴与镜头提示）。适合知识博主、销售型口播、视频号、B站、直播切片。｜口播脚本专家.Skill——当用户提到「口播脚本」「短视频脚本」「视频文案」「对着镜头说什么」「完播率低」「前三秒」「怎么开头」「知识博主」「视频号」「讲什么东西」时立即触发；用户说「帮我写个视频脚本」同样触发。典型搜索词：口播/口播脚本/口播稿/短视频脚本/视频脚本/视频文案/脚本/文案/分镜脚本/短视频/抖音脚本/视频号/b站/知识口播/知识博主/科普/干货/开头/黄金三秒/前三秒/钩子/hook/完播率/完播/停留/互动/结尾/落点/引导/关注/点赞/评论/转发/结构/信息密度/口语化/念稿/镜头/景别/机位/提词器/时长/字数/语速/选题/标题/封面/账号定位/人设/垂类/带货/知识付费。",
+        "description_zh": "【口播脚本专家】专治「对着镜头不知道说什么」：选题→黄金三秒钩子→信息结构→口语化稿→节奏标注→结尾落点。用户给一个主题，直接产出可直接念的口播脚本（含时间轴与镜头提示）。适合知识博主、销售型口播、视频号、B站、直播切片。｜口播脚本专家.Skill——当用户提到「口播脚本」「短视频脚本」「视频文案」「对着镜头说什么」「完播率低」「前三秒」「怎么开头」「知识博主」「视频号」「讲什么东西」时立即触发；用户说「帮我写个视频脚本」同样触发。典型搜索词：口播/口播脚本/口播稿/短视频脚本/视频脚本/视频文案/脚本/文案/分镜脚本/短视频/抖音脚本/视频号/b站/知识口播/知识博主/科普/干货/开头/黄金三秒/前三秒/钩子/hook/完播率/完播/停留/互动/结尾/落点/引导/关注/点赞/评论/转发/结构/信息密度/口语化/念稿/镜头/景别/机位/提词器/时长/字数/语速/选题/标题/封面/账号定位/人设/垂类/带货/知识付费。",
+        "downloads": 139,
+        "homepage": "https://api.skillhub.cn/user_757bce4c/douyin-script-forge-pro",
+        "iconUrl": "https://skillhub-1388575217.cos.accelerate.myqcloud.com/skill-icons/uploads/771722/78c5b9d35cde4f32a2ccab9f772975c9.png",
         "installs": 0,
         "isServiceized": false,
         "labels": {
+          "pricing_type": "alipay",
           "requires_api_key": "false"
         },
         "last_synced_at": null,
-        "name": "Apple 设计风格——极致简约的人文科技",
+        "name": "口播脚本专家.Skill",
         "namespace": {
-          "canonicalName": "@user_2af611f4/apple-design-style",
-          "displayName": "user_2af611f4",
-          "handle": "user_2af611f4",
-          "publicSlug": "apple-design-style"
+          "canonicalName": "@user_757bce4c/douyin-script-forge-pro",
+          "displayName": "user_757bce4c",
+          "handle": "user_757bce4c",
+          "publicSlug": "douyin-script-forge-pro"
         },
-        "ownerName": "user_2af611f4",
+        "ownerName": "user_757bce4c",
         "score": 100000,
-        "slug": "apple-design-style",
+        "slug": "douyin-script-forge-pro",
         "source": "community",
         "stars": 0,
         "subCategories": [
           {
-            "key": "design-poster",
-            "name": "海报设计"
+            "key": "content-marketing-copy",
+            "name": "营销文案"
           },
           {
-            "key": "design-visual-asset",
-            "name": "视觉素材"
+            "key": "content-social-media",
+            "name": "自媒体运营"
+          },
+          {
+            "key": "content-short-video-script",
+            "name": "短视频脚本"
           }
         ],
         "tags": [
-          "apple",
-          "brand-style",
-          "design",
-          "examples",
-          "minimalism",
-          "tested",
-          "typography"
+          "口播",
+          "完播率",
+          "抖音",
+          "短视频",
+          "结构",
+          "脚本",
+          "视频号",
+          "镜头"
         ],
-        "updated_at": 1791975642258,
+        "updated_at": 1791982532646,
         "upstream_owner_login": null,
         "upstream_url": null,
         "verified": false,
-        "version": "1.2.0"
+        "version": "9.3.0"
       },
       {
-        "category": "knowledge-management",
+        "category": "content-creation",
+        "channelPricing": {
+          "currency": "CNY",
+          "payChannel": "alipay",
+          "price": "1.90"
+        },
         "claim_state": "unclaimed",
         "claimable": false,
         "claimed_user_handle": null,
-        "created_at": 1791357202512,
-        "description": "给园林苗木、植保、农业类文档批量打国家禁用与限用农药标记，也可直接查询某种药的合规状态。核心解决两个问题：老资料里的商品名（速扑杀、退菌特、米乐尔等）扫不到，以及「氧化乐果」被短名「乐果」误标成限用。适用于资料入库前、课件整理、防治方案发布前，以及\"这药还能不能用\"的日常查询。",
-        "description_zh": "给园林苗木、植保、农业类文档批量打国家禁用与限用农药标记，也可直接查询某种药的合规状态。核心解决两个问题：老资料里的商品名（速扑杀、退菌特、米乐尔等）扫不到，以及「氧化乐果」被短名「乐果」误标成限用。适用于资料入库前、课件整理、防治方案发布前，以及\"这药还能不能用\"的日常查询。",
-        "downloads": 29,
-        "homepage": "https://api.skillhub.cn/user_168fc0fe/pesticide-ban-check",
-        "iconUrl": "https://cloudcache.tencent-cloud.com/qcloud/ui/static/other_external_resource/0c9b068f-f22e-44e2-96fe-d2b6f5b43b07.png",
+        "created_at": 1790426654897,
+        "description": "【爆款标题专家】专治「内容不错但没人点」：标题公式库→封面文案→钩子设计→A/B 测试方案→多平台适配。用户给主题或已有内容，直接产出 20 条候选标题 + 3 版封面文案 + 测试方案。适合短视频、公众号、小红书、电商、邮件、课程命名。｜爆款标题专家.Skill——当用户提到「标题怎么写」「没人点」「点击率低」「封面文案」「钩子」「怎么起标题」「标题党」「完播率低」「打开率低」「转化差」时立即触发；用户贴来一篇文章或视频说「帮我起标题」同样触发。典型搜索词：标题/标题怎么写/爆款标题/标题公式/标题技巧/封面/封面文案/首图/主图/点击率/ctr/打开率/完播率/钩子/hook/开头/前三秒/黄金三秒/吸引力/悬念/悬念感/好奇心/情绪/共鸣/痛点/利益点/数字式标题/反差/对比/提问式/清单式/怎么起标题/取名/命名/课程命名/专栏命名/产品命名/短视频标题/公众号标题/小红书标题/知乎标题/b站标题/电商标题/商品标题/详情页/邮件标题/edm/推送标题/消息推送/ab测试/abtest/多版本/文案优化/改写。",
+        "description_zh": "【爆款标题专家】专治「内容不错但没人点」：标题公式库→封面文案→钩子设计→A/B 测试方案→多平台适配。用户给主题或已有内容，直接产出 20 条候选标题 + 3 版封面文案 + 测试方案。适合短视频、公众号、小红书、电商、邮件、课程命名。｜爆款标题专家.Skill——当用户提到「标题怎么写」「没人点」「点击率低」「封面文案」「钩子」「怎么起标题」「标题党」「完播率低」「打开率低」「转化差」时立即触发；用户贴来一篇文章或视频说「帮我起标题」同样触发。典型搜索词：标题/标题怎么写/爆款标题/标题公式/标题技巧/封面/封面文案/首图/主图/点击率/ctr/打开率/完播率/钩子/hook/开头/前三秒/黄金三秒/吸引力/悬念/悬念感/好奇心/情绪/共鸣/痛点/利益点/数字式标题/反差/对比/提问式/清单式/怎么起标题/取名/命名/课程命名/专栏命名/产品命名/短视频标题/公众号标题/小红书标题/知乎标题/b站标题/电商标题/商品标题/详情页/邮件标题/edm/推送标题/消息推送/ab测试/abtest/多版本/文案优化/改写。",
+        "downloads": 115,
+        "homepage": "https://api.skillhub.cn/user_757bce4c/cover-hook-master-pro",
+        "iconUrl": "https://skillhub-1388575217.cos.accelerate.myqcloud.com/skill-icons/uploads/771722/186bbc0e6a2544e3b8cc3a89f9f8dde1.png",
         "installs": 0,
         "isServiceized": false,
         "labels": {
+          "pricing_type": "alipay",
           "requires_api_key": "false"
         },
         "last_synced_at": null,
-        "name": "农药禁限用合规助手",
+        "name": "爆款标题专家.Skill",
         "namespace": {
-          "canonicalName": "@user_168fc0fe/pesticide-ban-check",
-          "displayName": "user_168fc0fe",
-          "handle": "user_168fc0fe",
-          "publicSlug": "pesticide-ban-check"
+          "canonicalName": "@user_757bce4c/cover-hook-master-pro",
+          "displayName": "user_757bce4c",
+          "handle": "user_757bce4c",
+          "publicSlug": "cover-hook-master-pro"
         },
-        "ownerName": "user_168fc0fe",
-        "score": 11421.911421911422,
-        "slug": "pesticide-ban-check",
+        "ownerName": "user_757bce4c",
+        "score": 82733.81294964028,
+        "slug": "cover-hook-master-pro",
         "source": "community",
-        "stars": 1,
+        "stars": 0,
         "subCategories": [
           {
-            "key": "knowledge-retrieval",
-            "name": "信息检索"
+            "key": "content-marketing-copy",
+            "name": "营销文案"
           },
           {
-            "key": "knowledge-archive",
-            "name": "知识归档"
+            "key": "content-short-video-script",
+            "name": "短视频脚本"
           },
           {
-            "key": "knowledge-doc-qa",
-            "name": "文档问答"
+            "key": "content-title",
+            "name": "标题生成"
           }
         ],
-        "tags": null,
-        "updated_at": 1791975637245,
+        "tags": [
+          "公众号",
+          "封面",
+          "文案",
+          "标题",
+          "点击率",
+          "电商",
+          "短视频",
+          "钩子"
+        ],
+        "updated_at": 1791982518722,
         "upstream_owner_login": null,
         "upstream_url": null,
         "verified": false,
-        "version": "1.0.0"
+        "version": "9.3.0"
       },
       {
-        "category": "knowledge-management",
+        "category": "education",
+        "channelPricing": {
+          "currency": "CNY",
+          "payChannel": "alipay",
+          "price": "19.90"
+        },
         "claim_state": "unclaimed",
         "claimable": false,
         "claimed_user_handle": null,
-        "created_at": 1787416921022,
-        "description": "将长辈口述、录音、日记、家书、照片说明采集并整理成家人可翻阅的回忆录（人生之书）。适用：给父母或祖辈留书、从零做口述访谈、上传录音转写、把已有手稿整理成书且不能编造。典型说法：「给爷爷写一本人生之书」「这段录音帮我转成文字再成书」「这些日记想做成给家里看的书」。不要用于：个人IP或起号故事、虚构小说、简单排版、与逝者聊天或声音克隆、家谱权利裁定、医疗诊断。",
-        "description_zh": "将长辈口述、录音、日记、家书、照片说明采集并整理成家人可翻阅的回忆录（人生之书）。适用：给父母或祖辈留书、从零做口述访谈、上传录音转写、把已有手稿整理成书且不能编造。典型说法：「给爷爷写一本人生之书」「这段录音帮我转成文字再成书」「这些日记想做成给家里看的书」。不要用于：个人IP或起号故事、虚构小说、简单排版、与逝者聊天或声音克隆、家谱权利裁定、医疗诊断。",
-        "downloads": 71,
-        "homepage": "https://api.skillhub.cn/user_cae83fba/life-book",
-        "iconUrl": "https://cloudcache.tencent-cloud.com/qcloud/ui/static/other_external_resource/a00e31c7-8d6a-4e65-84fc-16a177f95674.png",
+        "created_at": 1790425908179,
+        "description": "【课程设计专家】把一个知识点或经验，设计成能卖、能交付、能复购的课程产品：卖点定位→大纲结构→单节脚本→作业与打卡→定价与梯度→交付 SOP→复购设计。用户给一个主题，直接产出完整课程产品方案（含大纲与定价）。适合知识付费、讲师、训练营、企业内训、一人公司。｜课程设计专家.Skill——当用户提到「课程怎么做」「大纲怎么写」「知识付费」「训练营怎么设计」「怎么定价」「卖课」「录播课」「直播课」「社群课」「打卡」「作业」「完课率」「复购」「交付太重」「课程卖不动」「不知道讲什么」时立即触发；用户说「我有个经验想做成课」同样触发。典型搜索词：课程/课程设计/课程大纲/大纲/知识付费/训练营/集训营/陪伴营/录播课/直播课/专栏/会员/社群/学习路径/学习地图/教学目标/知识点拆解/单节脚本/逐字稿/讲师稿/作业设计/打卡/练习/测验/完课率/完播率/交付/交付sop/带教/助教/答疑/定价/价格锚点/梯度定价/早鸟价/拼团/分销/复购/续费/进阶课/企业内训/内训/讲师/培训/微课/系列课/知识产品/课程产品化。",
+        "description_zh": "【课程设计专家】把一个知识点或经验，设计成能卖、能交付、能复购的课程产品：卖点定位→大纲结构→单节脚本→作业与打卡→定价与梯度→交付 SOP→复购设计。用户给一个主题，直接产出完整课程产品方案（含大纲与定价）。适合知识付费、讲师、训练营、企业内训、一人公司。｜课程设计专家.Skill——当用户提到「课程怎么做」「大纲怎么写」「知识付费」「训练营怎么设计」「怎么定价」「卖课」「录播课」「直播课」「社群课」「打卡」「作业」「完课率」「复购」「交付太重」「课程卖不动」「不知道讲什么」时立即触发；用户说「我有个经验想做成课」同样触发。典型搜索词：课程/课程设计/课程大纲/大纲/知识付费/训练营/集训营/陪伴营/录播课/直播课/专栏/会员/社群/学习路径/学习地图/教学目标/知识点拆解/单节脚本/逐字稿/讲师稿/作业设计/打卡/练习/测验/完课率/完播率/交付/交付sop/带教/助教/答疑/定价/价格锚点/梯度定价/早鸟价/拼团/分销/复购/续费/进阶课/企业内训/内训/讲师/培训/微课/系列课/知识产品/课程产品化。",
+        "downloads": 123,
+        "homepage": "https://api.skillhub.cn/user_757bce4c/course-product-designer-pro",
+        "iconUrl": "https://skillhub-1388575217.cos.accelerate.myqcloud.com/skill-icons/uploads/771722/397cdb3dbd714f0c88c15d9076fcea28.png",
         "installs": 0,
         "isServiceized": false,
         "labels": {
+          "pricing_type": "alipay",
           "requires_api_key": "false"
         },
         "last_synced_at": null,
-        "name": "人生之书",
+        "name": "课程设计专家.Skill",
         "namespace": {
-          "canonicalName": "@user_cae83fba/life-book",
-          "displayName": "user_cae83fba",
-          "handle": "user_cae83fba",
-          "publicSlug": "life-book"
+          "canonicalName": "@user_757bce4c/course-product-designer-pro",
+          "displayName": "user_757bce4c",
+          "handle": "user_757bce4c",
+          "publicSlug": "course-product-designer-pro"
         },
-        "ownerName": "user_cae83fba",
-        "score": 21212.121212121212,
-        "slug": "life-book",
+        "ownerName": "user_757bce4c",
+        "score": 88489.20863309353,
+        "slug": "course-product-designer-pro",
         "source": "community",
-        "stars": 1,
+        "stars": 0,
         "subCategories": [
           {
-            "key": "knowledge-organize",
-            "name": "资料整理"
+            "key": "edu-course-design",
+            "name": "课程设计"
           },
           {
-            "key": "knowledge-notes",
-            "name": "笔记整理"
-          },
-          {
-            "key": "knowledge-archive",
-            "name": "知识归档"
+            "key": "edu-teaching-aid",
+            "name": "教学辅助"
           }
         ],
-        "tags": null,
-        "updated_at": 1791975632363,
+        "tags": [
+          "交付",
+          "大纲",
+          "定价",
+          "教学",
+          "知识付费",
+          "训练营",
+          "课程设计",
+          "转化"
+        ],
+        "updated_at": 1791982465857,
         "upstream_owner_login": null,
         "upstream_url": null,
         "verified": false,
-        "version": "1.1.0"
+        "version": "6.1.0"
       }
     ],
-    "total": 194720
+    "total": 194739
   },
   "message": "success"
 }

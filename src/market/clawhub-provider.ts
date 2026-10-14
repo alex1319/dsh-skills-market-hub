@@ -32,9 +32,11 @@
  */
 
 import {
+  categoriesField,
   detectMarketLanguage,
   MARKET_LIMITS,
   skillId,
+  type CategoryRef,
   type MarketFileMeta,
   type MarketSource,
   type NormalizedSkill,
@@ -71,6 +73,7 @@ interface RawListItem {
   displayName?: unknown
   summary?: unknown
   topics?: unknown
+  categories?: unknown
   tags?: unknown
   stats?: unknown
   createdAt?: unknown
@@ -145,6 +148,22 @@ function asArray(value: unknown): unknown[] {
 /** Topic strings, which the registry uses where SkillHub uses tag arrays. */
 function topicsOf(value: unknown): string[] {
   return asArray(value).filter((entry): entry is string => typeof entry === 'string' && entry.trim() !== '')
+}
+
+/**
+ * This registry's classifications, which are already English words.
+ *
+ * `native.skill.categories` is a `string[]` (`knowledge`, `automation`, …) and is
+ * the only classification ClawHub publishes; the flat list shape does not carry
+ * it at all, so a list entry has no categories and only search and detail do.
+ *
+ * The key is deliberately *not* translated through SkillHub's vocabulary: the two
+ * registries run separate taxonomies, and a shared spelling would be a coincidence
+ * rather than a mapping. `labelEn` is the word itself, because that is what this
+ * registry calls it.
+ */
+function categoriesOf(value: unknown): CategoryRef[] {
+  return topicsOf(value).map((key) => ({ key, labelEn: key }))
 }
 
 /** The human page for a skill; requires the owner, because the slug alone is ambiguous. */
@@ -261,6 +280,7 @@ export function normalizeListItem(raw: RawListItem): NormalizedSkill | null {
       ...(asNumber(stats.stars) === undefined ? {} : { stars: asNumber(stats.stars)! }),
     },
     tags: topicsOf(raw.topics),
+    ...categoriesField(categoriesOf(raw.categories)),
     securityStatus: 'unknown',
     installState: 'installable',
     ...(version === undefined ? {} : { version }),
@@ -299,6 +319,7 @@ export function normalizeSearchResult(raw: RawSearchResult): NormalizedSkill | n
     },
     // Topics live on the nested native skill; the flat result has none.
     tags: topicsOf(nativeSkill?.topics),
+    ...categoriesField(categoriesOf(nativeSkill?.categories)),
     securityStatus: 'unknown',
     installState: 'installable',
     ...(updatedAt === undefined ? {} : { updatedAt }),

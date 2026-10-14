@@ -8,9 +8,12 @@
  */
 
 import { useEffect, useRef } from 'react'
-import { useT } from '../translate.tsx'
-import { Button, Pill, SPACE, countText, radius, shortDate, surfaceStyle, token } from '../ui.tsx'
-import type { NormalizedSkill, SecurityStatus } from '../api.ts'
+import { useLocale, useT } from '../translate.tsx'
+import { Button, Pill, SPACE, categoryLabelText, countText, radius, surfaceStyle, token } from '../ui.tsx'
+import type { CategoryRef, NormalizedSkill, SecurityStatus } from '../api.ts'
+
+/** How many classification chips a card shows before it stops being scannable. */
+const CARD_CATEGORY_LIMIT = 2
 
 /** Verdict → pill tone. An unknown verdict is shown, never hidden. */
 function securityTone(status: SecurityStatus): 'ok' | 'warn' | 'error' | 'muted' {
@@ -35,8 +38,12 @@ export interface SkillCardProps {
 
 export function SkillCard({ skill, busy, onOpen, onInstall }: SkillCardProps) {
   const t = useT()
+  const locale = useLocale()
   const installed = skill.installState === 'installed'
   const blocked = skill.installState === 'not-installable'
+  const categories = skill.categories ?? []
+  const shown = categories.slice(0, CARD_CATEGORY_LIMIT)
+  const hidden = categories.slice(CARD_CATEGORY_LIMIT)
 
   return (
     <div style={surfaceStyle({ padding: SPACE.md, display: 'flex', flexDirection: 'column', gap: SPACE.sm })}>
@@ -87,6 +94,14 @@ export function SkillCard({ skill, busy, onOpen, onInstall }: SkillCardProps) {
       </p>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACE.xs, alignItems: 'center' }}>
+        {shown.map((ref) => <CategoryPill key={ref.key} category={ref} />)}
+        {hidden.length === 0 ? null : (
+          // The overflow is named on hover rather than dropped: the key of every
+          // classification is what a reader would search or report.
+          <Pill tone="muted" title={hidden.map((ref) => categoryLabelText(ref, locale)).join(' / ')}>
+            +{hidden.length}
+          </Pill>
+        )}
         <Pill tone="brand">{skill.source}</Pill>
         <Pill tone={securityTone(skill.securityStatus)} title={t(securityLabelKey(skill.securityStatus))}>
           {t(securityLabelKey(skill.securityStatus))}
@@ -113,6 +128,18 @@ export function SkillCard({ skill, busy, onOpen, onInstall }: SkillCardProps) {
       </div>
     </div>
   )
+}
+
+/**
+ * One classification chip.
+ *
+ * `neutral` rather than a status tone: a category is not a verdict, and reusing
+ * the security palette for it would make a benign skill look flagged. The tooltip
+ * carries the registry's own key, which is the stable name behind the label.
+ */
+export function CategoryPill({ category }: { category: CategoryRef }) {
+  const locale = useLocale()
+  return <Pill tone="neutral" title={category.key}>{categoryLabelText(category, locale)}</Pill>
 }
 
 /**

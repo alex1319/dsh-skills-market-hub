@@ -180,14 +180,27 @@ export interface SelectFieldProps<T extends string> {
   options: ReadonlyArray<{ value: T; label: string }>
   onChange: (value: T) => void
   ariaLabel: string
+  /**
+   * What this dropdown filters by, in a sentence.
+   *
+   * A closed-set control has no room for a visible label of its own — the two
+   * dropdowns beside the search box rendered as a pair of identical "All" chips,
+   * which told the reader nothing about which axis either one filtered. So the
+   * question is answered twice: the option labels now name their axis ("Any
+   * verdict" / "Any state"), and this text is the tooltip and the accessible
+   * description for anyone who still has to ask.
+   */
+  ariaDescription?: string
 }
 
 /** One closed-set dropdown, used for the filter bar. */
-export function SelectField<T extends string>({ value, options, onChange, ariaLabel }: SelectFieldProps<T>) {
+export function SelectField<T extends string>({ value, options, onChange, ariaLabel, ariaDescription }: SelectFieldProps<T>) {
   return (
     <select
       value={value}
       aria-label={ariaLabel}
+      aria-description={ariaDescription}
+      title={ariaDescription}
       onChange={(event) => { onChange(event.currentTarget.value as T) }}
       style={{
         font: 'inherit',
@@ -322,4 +335,34 @@ export function countText(value: number): string {
   if (value < 1_000) return String(value)
   if (value < 1_000_000) return `${(value / 1_000).toFixed(value < 10_000 ? 1 : 0)}k`
   return `${(value / 1_000_000).toFixed(1)}M`
+}
+
+// ── Classification labels ───────────────────────────────────────────────────
+
+/**
+ * The label to print for one classification.
+ *
+ * Preference order, and the reason for it:
+ *  1. the registry's label in the reader's language;
+ *  2. the registry's label in the other language — a Chinese label under an
+ *     English UI is still more informative than `design-poster`;
+ *  3. the key itself, de-hyphenated, because a raw `business-ops` next to a
+ *     proper chip reads as a rendering bug.
+ *
+ * The *key* is never hidden behind a label: it is what a future category filter
+ * and any support question will use, so `CategoryRef` carries both.
+ */
+export function categoryLabelText(ref: { key: string; labelZh?: string; labelEn?: string }, locale: 'zh' | 'en'): string {
+  const preferred = locale === 'en' ? ref.labelEn : ref.labelZh
+  const other = locale === 'en' ? ref.labelZh : ref.labelEn
+  const chosen = preferred ?? other
+  if (chosen !== undefined && chosen.trim() !== '') return chosen
+  return humanizeKey(ref.key)
+}
+
+/** `design-media` → `Design Media`; the last resort before showing nothing. */
+export function humanizeKey(key: string): string {
+  const spaced = key.replace(/[-_]+/g, ' ').trim()
+  if (spaced === '') return key
+  return spaced.replace(/\b[a-z]/g, (letter) => letter.toUpperCase())
 }

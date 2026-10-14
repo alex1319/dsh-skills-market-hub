@@ -31,6 +31,7 @@ function skill(overrides = {}) {
     ...(overrides.upstream === undefined ? {} : { upstream: overrides.upstream }),
     ...(overrides.iconUrl === undefined ? {} : { iconUrl: overrides.iconUrl }),
     ...(overrides.securityReports === undefined ? {} : { securityReports: overrides.securityReports }),
+    ...(overrides.categories === undefined ? {} : { categories: overrides.categories }),
   }
 }
 
@@ -176,6 +177,45 @@ describe('cross-source merge', () => {
     const merged = dedupeSkills([original, mirrorA, mirrorB])
     assert.equal(merged.length, 1)
     assert.deepEqual(merged[0].mirrors, ['skillhub:weather', 'skillhub:weather-copy'])
+  })
+
+  it('takes the mirror classifications only when the original has none', () => {
+    // ClawHub's list shape publishes no classifications at all, so a mirrored
+    // SkillHub entry is frequently the only source of one.
+    const original = skill({ source: 'clawhub', slug: 'weather', owner: 'alice' })
+    const mirror = skill({
+      source: 'skillhub',
+      slug: 'weather',
+      owner: 'alice',
+      categories: [{ key: 'life-service', labelZh: '生活服务', labelEn: 'Life Service' }],
+      upstream: { source: 'clawhub', slug: 'weather', owner: 'alice' },
+    })
+
+    const merged = dedupeSkills([original, mirror])
+    assert.deepEqual(merged[0].categories, [{ key: 'life-service', labelZh: '生活服务', labelEn: 'Life Service' }])
+  })
+
+  it('never replaces the original classifications with the copy of them', () => {
+    const original = skill({
+      source: 'clawhub', slug: 'weather', owner: 'alice',
+      categories: [{ key: 'knowledge', labelEn: 'knowledge' }],
+    })
+    const mirror = skill({
+      source: 'skillhub', slug: 'weather', owner: 'alice',
+      categories: [{ key: 'office-efficiency', labelZh: '办公效率' }],
+      upstream: { source: 'clawhub', slug: 'weather', owner: 'alice' },
+    })
+
+    const merged = dedupeSkills([original, mirror])
+    assert.deepEqual(merged[0].categories, [{ key: 'knowledge', labelEn: 'knowledge' }])
+  })
+
+  it('copies the classification list rather than sharing the cached entry', () => {
+    // The merge output is handed to more than one render and the input may be a
+    // cached page; a shared array would let one consumer's edit reach the other.
+    const upstream = [{ key: 'knowledge', labelEn: 'knowledge' }]
+    const merged = dedupeSkills([skill({ categories: upstream })])
+    assert.notEqual(merged[0].categories, upstream)
   })
 
   it('never mutates its inputs', () => {

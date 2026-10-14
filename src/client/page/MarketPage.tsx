@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import { TranslateProvider, useT, type Translate } from '../translate.tsx'
+import { useMarketLocale } from '../locale-store.ts'
 import { Button, SPACE, bodyStyle, headerStyle, shellStyle, subtitleStyle, titleStyle, token } from '../ui.tsx'
 import { MarketList } from '../components/MarketList.tsx'
 import { MarketDetail } from '../components/MarketDetail.tsx'
@@ -26,10 +27,19 @@ export interface MarketPageProps {
   t: Translate
 }
 
-/** Outer shell: supplies the controller's locale seat, then renders the panel. */
+/**
+ * Outer shell: supplies the panel's seats, then renders it.
+ *
+ * The language comes from the shell's own locale service rather than from the
+ * `t` seat, because `t` can only answer questions about *copy this plugin
+ * authored* — and a registry's classification labels are not ours to author. The
+ * panel re-renders the chips when the reader switches language, which is what the
+ * subscription in `locale-store.ts` exists for.
+ */
 export function MarketPage({ t }: MarketPageProps) {
+  const locale = useMarketLocale()
   return (
-    <TranslateProvider t={t}>
+    <TranslateProvider t={t} locale={locale}>
       <MarketPanel />
     </TranslateProvider>
   )

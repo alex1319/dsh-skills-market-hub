@@ -15,6 +15,14 @@ import { type Translate } from '../translate.tsx';
 export interface MarketPageProps {
     t: Translate;
 }
-/** Outer shell: supplies the controller's locale seat, then renders the panel. */
+/**
+ * Outer shell: supplies the panel's seats, then renders it.
+ *
+ * The language comes from the shell's own locale service rather than from the
+ * `t` seat, because `t` can only answer questions about *copy this plugin
+ * authored* — and a registry's classification labels are not ours to author. The
+ * panel re-renders the chips when the reader switches language, which is what the
+ * subscription in `locale-store.ts` exists for.
+ */
 export declare function MarketPage({ t }: MarketPageProps): import("react").JSX.Element;
 //# sourceMappingURL=MarketPage.d.ts.map

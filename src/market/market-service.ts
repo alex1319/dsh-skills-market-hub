@@ -20,6 +20,7 @@
 import { cacheKey, type MarketCache, type MarketCacheStats } from './cache.ts'
 import { dedupeSkills, sortByDownloads } from './dedupe.ts'
 import type { MarketCursor } from './cursor.ts'
+import { categoryVocabulary, ensureCategoryVocabulary } from './taxonomy.ts'
 import { detectMarketLanguage, MARKET_LIMITS, sanitizeDirName, skillId } from './types.ts'
 import type {
   InstallState,
@@ -337,6 +338,11 @@ export async function getMarketSkillDetail(
     throw new Error(`no provider is configured for source ${source}`)
   }
 
+  // Before the provider runs, not after: the classification *keys* arrive on the
+  // skill, but their labels come from a separate vocabulary endpoint, and the
+  // provider is where a ref is built. A failure here costs labels, never the read.
+  await ensureCategoryVocabulary({ ...(options.force === undefined ? {} : { force: options.force }) })
+
   const key = cacheKey('detail', [source, slug, options.owner])
   const read = await readWithCache<NormalizedSkillDetail>(key, source, options, () => target.detail(slug, {
     ...(options.owner === undefined ? {} : { owner: options.owner }),
@@ -411,6 +417,12 @@ export async function listMarketSkills(
 ): Promise<MarketListResult> {
   const requested = query.source === 'all' ? (['clawhub', 'skillhub'] as const) : ([query.source] as const)
 
+  // Awaited *before* the providers run, so the first page a reader ever sees
+  // already carries words instead of classification keys. It costs one extra
+  // request on a cold start (the vocabulary is then reused for an hour), which is
+  // the right trade against a first page that renders `design-media`.
+  await ensureCategoryVocabulary({ ...(query.refresh === true ? { force: true } : {}) })
+
   const pages = await Promise.all(requested.map(async (source) => {
     const target = providers[source]
     if (target === undefined) return { source, items: [] as NormalizedSkill[], nextCursor: undefined as string | undefined }
@@ -454,7 +466,17 @@ export function configuredSources(): MarketSource[] {
   return (['clawhub', 'skillhub'] as const).filter((source) => providers[source] !== undefined)
 }
 
-/** Curated category list; empty until a catalogue ships with the package. */
-export function listMarketCategories(): { items: MarketCategory[]; status: SourceStatusInfo } {
-  return { items: [], status: { status: 'ok', fromCache: true } }
+/**
+ * The classification vocabulary, for the panel's filter bar.
+ *
+ * Read through the same cache and TTL as the labels on a card, so the dropdown
+ * and the chips can never disagree about what the categories are called. An
+ * unreachable registry answers with the empty vocabulary this endpoint shipped
+ * with, rather than a failure: the filter bar degrades to "no categories known",
+ * which is true.
+ */
+export async function listMarketCategories(): Promise<{ items: MarketCategory[]; status: SourceStatusInfo }> {
+  await ensureCategoryVocabulary()
+  const items = [...categoryVocabulary().values()].sort((a, b) => a.sortOrder - b.sortOrder || a.key.localeCompare(b.key))
+  return { items, status: { status: 'ok', fromCache: items.length > 0 } }
 }

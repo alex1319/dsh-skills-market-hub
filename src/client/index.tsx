@@ -27,6 +27,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type { SlotCore, SlotMap } from '@deepseek-ai/dsh-client-ui-slots'
 import { MarketPage } from './page/MarketPage.tsx'
 import { SkillsMarketIcon } from './icons.tsx'
+import { installMarketLocale, resetMarketLocale } from './locale-store.ts'
 import { NS, en, zh } from './locales.ts'
 
 /** Stable plugin name of the browser half. */
@@ -54,9 +55,18 @@ interface SlotsFace {
   register: SlotCore['register']
 }
 
-/** Locale face used at activation time (the injected `t` seat covers the panel). */
+/**
+ * Locale face used at activation time (the injected `t` seat covers the panel).
+ *
+ * `getLocale`/`subscribe` are the documented snapshot pair the shell republishes
+ * on every language change; both are optional here so a composition that installs
+ * no locale service still activates.
+ */
 interface LocaleFace {
   register(ns: string, locale: string, dict: Record<string, string>): () => void
+  getLocale?(): { readonly active: string }
+  getSnapshot?(): unknown
+  subscribe?(fn: () => void): () => void
 }
 
 /** Register the sidebar entry and the panel it opens. */
@@ -68,7 +78,17 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => {
     const offZh = locale.register(NS, 'zh', zh)
     const offEn = locale.register(NS, 'en', en)
+    installMarketLocale(
+      locale.getLocale === undefined || locale.subscribe === undefined
+        ? undefined
+        : {
+            getLocale: () => locale.getLocale!(),
+            getSnapshot: () => locale.getSnapshot?.() ?? locale.getLocale!(),
+            subscribe: (fn) => locale.subscribe!(fn),
+          },
+    )
     return () => {
+      resetMarketLocale()
       offEn()
       offZh()
     }

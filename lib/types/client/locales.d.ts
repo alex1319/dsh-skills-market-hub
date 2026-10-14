@@ -37,14 +37,17 @@ export declare const zh: {
     readonly filterSecurity: "安全";
     readonly filterInstalled: "安装状态";
     readonly sourceAll: "全部来源";
-    readonly securityAll: "全部";
+    readonly securityAll: "全部安全等级";
     readonly securityVerified: "已核验";
     readonly securityBenign: "未见异常";
     readonly securityUnknown: "未知";
     readonly securityFlagged: "有风险";
-    readonly installedAll: "全部";
+    readonly installedAll: "全部安装状态";
     readonly installedOnly: "已安装";
     readonly installedInstallable: "未安装";
+    readonly filterSourceHint: "只看某一个注册表：ClawHub 或 SkillHub。";
+    readonly filterSecurityHint: "按上游注册表给出的安全结论筛选；「未知」表示注册表没有发布扫描结果。";
+    readonly filterInstalledHint: "按本机是否已经装了它来筛选。";
     readonly install: "安装";
     readonly installing: "安装中…";
     readonly installed: "已安装";
@@ -81,6 +84,8 @@ export declare const zh: {
     readonly detailSecurity: "安全";
     readonly detailChangelog: "更新日志";
     readonly detailAbout: "技能说明";
+    readonly detailCategories: "分类";
+    readonly detailTags: "标签";
     readonly detailVersion: "版本";
     readonly detailDownloads: "下载";
     readonly detailUpdated: "更新";

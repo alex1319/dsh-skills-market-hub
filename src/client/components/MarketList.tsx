@@ -75,9 +75,27 @@ export function MarketList(props: MarketListProps) {
             ariaLabel={t('search')}
           />
         </div>
-        <SelectField value={state.filters.source} options={sourceOptions} onChange={props.onSetSource} ariaLabel={t('filterSource')} />
-        <SelectField value={state.filters.security} options={securityOptions} onChange={props.onSetSecurity} ariaLabel={t('filterSecurity')} />
-        <SelectField value={state.filters.installed} options={installedOptions} onChange={props.onSetInstalled} ariaLabel={t('filterInstalled')} />
+        <SelectField
+          value={state.filters.source}
+          options={sourceOptions}
+          onChange={props.onSetSource}
+          ariaLabel={t('filterSource')}
+          ariaDescription={t('filterSourceHint')}
+        />
+        <SelectField
+          value={state.filters.security}
+          options={securityOptions}
+          onChange={props.onSetSecurity}
+          ariaLabel={t('filterSecurity')}
+          ariaDescription={t('filterSecurityHint')}
+        />
+        <SelectField
+          value={state.filters.installed}
+          options={installedOptions}
+          onChange={props.onSetInstalled}
+          ariaLabel={t('filterInstalled')}
+          ariaDescription={t('filterInstalledHint')}
+        />
         {filtersActive ? <Button onClick={props.onClearFilters}>{t('clearFilters')}</Button> : null}
       </div>
 

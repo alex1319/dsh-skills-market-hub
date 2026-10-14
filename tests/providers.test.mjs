@@ -30,6 +30,12 @@ import {
   parseSecurityReports,
   parseUpstream,
 } from '../lib/market/skillhub-provider.js'
+import {
+  categoryNames,
+  parseCategoryVocabulary,
+  resetCategoryVocabulary,
+  setCategoryVocabulary,
+} from '../lib/market/taxonomy.js'
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 const FIXTURES = join(ROOT, 'tests', 'fixtures', 'market')
@@ -46,6 +52,7 @@ const skillhubList = await fixture('skillhub-list.json')
 const skillhubSearch = await fixture('skillhub-search.json')
 const skillhubDetail = await fixture('skillhub-detail.json')
 const skillhubFiles = await fixture('skillhub-files.json')
+const skillhubCategories = await fixture('skillhub-categories.json')
 
 describe('ClawHub list normalization', () => {
   it('normalizes every entry of a real page', () => {
@@ -133,6 +140,26 @@ describe('ClawHub search normalization', () => {
     assert.notDeepEqual(normalized.tags, [withNestedTags.native.skill.tags.latest])
     assert.deepEqual(normalized.tags, withNestedTags.native.skill.topics ?? [])
   })
+
+  it('reads classifications from the nested native skill', () => {
+    const native = clawhubSearch.results.filter(isNativeSearchResult)
+    const classified = native.find((result) => Array.isArray(result.native?.skill?.categories) && result.native.skill.categories.length > 0)
+    assert.ok(classified, 'the fixture must contain a classified result')
+
+    const normalized = normalizeSearchResult(classified)
+    // Order is the registry's own; each key doubles as its English label, which is
+    // the only spelling ClawHub publishes.
+    assert.deepEqual(normalized.categories, classified.native.skill.categories.map((key) => ({ key, labelEn: key })))
+  })
+
+  it('omits classifications entirely when the registry publishes none', () => {
+    // Two shapes reach this: a search row with `native: null`, and a list entry
+    // whose payload has no `categories` field at all (the list shape never does).
+    const aggregated = clawhubSearch.results.find((result) => !isNativeSearchResult(result))
+    assert.ok(aggregated, 'the fixture must contain an aggregated result')
+    assert.equal(normalizeSearchResult(aggregated).categories, undefined)
+    assert.equal(normalizeListItem(clawhubList.items[0]).categories, undefined)
+  })
 })
 
 describe('ClawHub detail normalization', () => {
@@ -142,7 +169,9 @@ describe('ClawHub detail normalization', () => {
     assert.equal(detail.name, 'Pdf')
     assert.equal(detail.author.handle, 'awspace')
     assert.equal(detail.version, '0.1.0')
-    assert.equal(detail.stats.downloads, 50487)
+    // The counter ticks between captures, so the expectation follows the fixture
+    // rather than freezing a number that a re-capture would invalidate.
+    assert.equal(detail.stats.downloads, clawhubDetail.skill.stats.downloads)
     assert.deepEqual(detail.tags, ['PDF'])
     assert.equal(detail.pageUrl, 'https://clawhub.ai/awspace/skills/pdf')
   })
@@ -254,9 +283,16 @@ describe('SkillHub list normalization', () => {
     assert.equal(normalizeSkillhubListItem(raw).version, raw.version)
   })
 
-  it('treats tags as absent on the list shape, where they are always null', () => {
-    const raw = skillhubList.data.skills.find((entry) => entry.tags === null)
-    assert.deepEqual(normalizeSkillhubListItem(raw).tags, [])
+  it('reads the list `tags` value whatever it holds, because it varies by page', () => {
+    // Observed both ways on this endpoint: `null` on some captures, a string array
+    // on others. The earlier version of this test asserted "always null" and only
+    // passed because the page it happened to capture had none — a fixture is a
+    // photograph, and that assertion was reading the weather.
+    for (const raw of skillhubList.data.skills) {
+      const expected = Array.isArray(raw.tags) ? raw.tags : []
+      assert.deepEqual(normalizeSkillhubListItem(raw).tags, expected, `${raw.slug} tags`)
+    }
+    assert.deepEqual(normalizeSkillhubListItem({ slug: 'x', name: 'X', tags: null }).tags, [])
   })
 
   it('accepts tags as a string array when the endpoint sends one', () => {
@@ -277,6 +313,89 @@ describe('SkillHub list normalization', () => {
     const flagged = skillhubList.data.skills.map(normalizeSkillhubListItem).find((item) => item.requiresApiKey === true)
     const unflagged = skillhubList.data.skills.map(normalizeSkillhubListItem).find((item) => item.requiresApiKey === undefined)
     assert.ok(flagged !== undefined || unflagged !== undefined, 'the flag must be read as a boolean, not the string "true"')
+  })
+
+  it('reads classifications from subCategories and the top-level key', () => {
+    const raw = skillhubList.data.skills.find((entry) => Array.isArray(entry.subCategories) && entry.subCategories.length > 0)
+    assert.ok(raw, 'the fixture must contain a classified entry')
+
+    const item = normalizeSkillhubListItem(raw)
+    const expected = [
+      ...raw.subCategories.map((entry) => ({ key: entry.key, ...(entry.name === undefined ? {} : { labelZh: entry.name }) })),
+      // The top-level key is kept as well — it is the one classification the
+      // registry itself assigns, and it is the label source when the vocabulary
+      // has not loaded.
+      { key: raw.category },
+    ]
+    assert.deepEqual(item.categories, expected)
+  })
+
+  it('still classifies an entry that carries only the top-level key', () => {
+    const item = normalizeSkillhubListItem({ slug: 'x', name: 'X', category: 'design-media' })
+    assert.deepEqual(item.categories, [{ key: 'design-media' }])
+  })
+
+  it('reads the detail classifications from the nested skill block', () => {
+    const detail = normalizeSkillhubDetail(skillhubDetail, skillhubDetail.slug, '')
+    const raw = skillhubDetail.skill
+    assert.ok(raw.category !== undefined || Array.isArray(raw.subCategories), 'the fixture must classify the skill')
+    assert.deepEqual(detail.categories, normalizeSkillhubListItem({ slug: detail.slug, category: raw.category, subCategories: raw.subCategories }).categories)
+  })
+})
+
+describe('classification vocabulary', () => {
+  const vocabulary = parseCategoryVocabulary(skillhubCategories)
+
+  it('parses the real published vocabulary', () => {
+    assert.equal(vocabulary.length, skillhubCategories.items.length)
+    for (const entry of vocabulary) {
+      assert.ok(entry.key !== '')
+      assert.ok(entry.name !== '', 'a vocabulary entry without a label names nothing')
+      assert.equal(entry.level, 1)
+    }
+  })
+
+  it('keeps both published spellings apart', () => {
+    const designMedia = vocabulary.find((entry) => entry.key === 'design-media')
+    assert.ok(designMedia, 'the reference category must exist')
+    assert.equal(designMedia.name, '设计多媒体')
+    assert.equal(designMedia.nameEn, 'Design & Media')
+
+    setCategoryVocabulary(vocabulary)
+    assert.deepEqual(categoryNames('design-media'), { labelZh: '设计多媒体', labelEn: 'Design & Media' })
+    // An unknown key resolves to nothing rather than to a guess.
+    assert.deepEqual(categoryNames('never-published'), {})
+    resetCategoryVocabulary()
+  })
+
+  it('does not report an English-only label as the Chinese one', () => {
+    // `ai-agent` is spelled identically in both languages; filing it as Chinese
+    // too would make the zh/en selection meaningless for exactly the entries where
+    // it is hardest to notice.
+    setCategoryVocabulary(parseCategoryVocabulary({
+      items: [{ key: 'ai-agent', name: 'AI Agent', nameEn: 'AI Agent', sortOrder: 0, active: true }],
+    }))
+    assert.deepEqual(categoryNames('ai-agent'), { labelEn: 'AI Agent' })
+    resetCategoryVocabulary()
+  })
+
+  it('skips inactive entries and unreadable ones instead of inventing labels', () => {
+    const parsed = parseCategoryVocabulary({
+      items: [
+        { key: 'live', name: '在线', nameEn: 'Live', sortOrder: 1, active: true },
+        { key: 'retired', name: '已下线', sortOrder: 2, active: false },
+        { key: 'nameless', sortOrder: 3, active: true },
+        { name: 'keyless', sortOrder: 4, active: true },
+        'not an object',
+      ],
+    })
+    assert.deepEqual(parsed.map((entry) => entry.key), ['live'])
+  })
+
+  it('returns nothing for a malformed payload rather than throwing', () => {
+    assert.deepEqual(parseCategoryVocabulary(null), [])
+    assert.deepEqual(parseCategoryVocabulary({}), [])
+    assert.deepEqual(parseCategoryVocabulary({ items: 'nope' }), [])
   })
 })
 

@@ -30,9 +30,11 @@
  */
 
 import {
+  categoriesField,
   detectMarketLanguage,
   MARKET_LIMITS,
   skillId,
+  type CategoryRef,
   type MarketFileMeta,
   type MarketSource,
   type NormalizedSkill,
@@ -43,6 +45,7 @@ import {
 } from './types.ts'
 import { providerFetch, providerFetchJson, providerUrl, MarketUpstreamError, UPSTREAM_ERROR_CODES } from './provider-fetch.ts'
 import { stripFrontmatter, toSummary } from './frontmatter.ts'
+import { categoryNames } from './taxonomy.ts'
 import type { MarketProvider } from './market-service.ts'
 
 export const SOURCE: MarketSource = 'skillhub'
@@ -275,6 +278,36 @@ function tagsOf(value: unknown): string[] {
   return []
 }
 
+/**
+ * Read this registry's classification for one skill.
+ *
+ * The shape is asymmetric and both halves are needed, because neither one alone
+ * describes the skill: `category` is the single top-level key, and `subCategories`
+ * holds the specific placements the publisher chose (each `{key, name}`). The
+ * observed list, search and detail endpoints all carry both — the detail nests
+ * them one level deeper, under `skill`.
+ *
+ * The top-level key is kept even when sub-categories exist, because a skill with
+ * a mis-filed sub-category would otherwise show no category at all; it is the one
+ * value the registry itself assigns.
+ */
+function categoriesOf(category: unknown, subCategories: unknown): CategoryRef[] {
+  const refs: CategoryRef[] = []
+  for (const entry of Array.isArray(subCategories) ? subCategories : []) {
+    const record = asRecord(entry)
+    const key = asString(record?.key)
+    if (key === undefined) continue
+    const label = asString(record?.name)
+    refs.push({ key, ...(label === undefined ? {} : { labelZh: label }) })
+  }
+
+  const top = asString(category)
+  if (top !== undefined && !refs.some((ref) => ref.key === top)) {
+    refs.push({ key: top, ...categoryNames(top) })
+  }
+  return refs
+}
+
 // ── Normalization ───────────────────────────────────────────────────────────
 
 /** Normalize one `data.skills[]` entry. */
@@ -307,6 +340,7 @@ export function normalizeListItem(raw: RawListItem): NormalizedSkill | null {
       ...(asNumber(raw.stars) === undefined ? {} : { stars: asNumber(raw.stars)! }),
     },
     tags: tagsOf(raw.tags),
+    ...categoriesField(categoriesOf(raw.category, raw.subCategories)),
     securityStatus: 'unknown',
     installState: 'installable',
     ...(asNumber(raw.verified) === undefined && asBoolean(raw.verified) === undefined ? {} : { verified: asBoolean(raw.verified) }),
@@ -362,6 +396,7 @@ export function normalizeDetail(raw: RawDetail, slug: string, description: strin
       ...(asNumber(stats.stars) === undefined ? {} : { stars: asNumber(stats.stars)! }),
     },
     tags: tagsOf(skill.tags),
+    ...categoriesField(categoriesOf(skill.category, skill.subCategories)),
     securityStatus: mapSecurity(reports, verified),
     ...(reports.length === 0 ? {} : { securityReports: reports }),
     installState: 'installable',

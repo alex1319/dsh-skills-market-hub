@@ -41,6 +41,7 @@ interface RawListItem {
     displayName?: unknown;
     summary?: unknown;
     topics?: unknown;
+    categories?: unknown;
     tags?: unknown;
     stats?: unknown;
     createdAt?: unknown;

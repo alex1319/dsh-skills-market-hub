@@ -39,6 +39,24 @@ export type SecurityReport = {
   summary?: string
 }
 
+/**
+ * One classification chip: the registry's stable key plus the labels it publishes.
+ *
+ * Both labels travel, rather than one already-chosen string, because the market
+ * layer caches upstream reads across panel languages: a payload that had already
+ * picked a language would pin the cache to whichever language asked first. The
+ * vocabulary is shared by every skill, so carrying both spellings costs a few
+ * hundred bytes per page and removes a whole class of staleness.
+ */
+export type CategoryRef = {
+  /** The registry's own key (`design-media`, `knowledge`) — stable, never localized. */
+  key: string
+  /** Chinese label as the registry spells it; absent when it publishes none. */
+  labelZh?: string
+  /** English label as the registry spells it; absent when it publishes none. */
+  labelEn?: string
+}
+
 export type NormalizedSkill = {
   /** `${source}:${slug}` — globally unique. */
   id: string
@@ -48,7 +66,10 @@ export type NormalizedSkill = {
   summary: string
   author: { handle: string; displayName?: string; avatarUrl?: string }
   stats: { downloads: number; installs?: number; stars?: number }
+  /** Free-form keywords from the registry's own `tags`/`topics`. */
   tags: string[]
+  /** Registry classifications, most specific first. Absent when the source has none. */
+  categories?: CategoryRef[]
   version?: string
   updatedAt?: number
   iconUrl?: string
@@ -112,14 +133,18 @@ export type MarketListResult = {
   sources: Record<MarketSource, SourceStatusInfo>
 }
 
-/** One curated-catalogue category. */
+/** One classification in the registry's published vocabulary. */
 export type MarketCategory = {
   key: string
+  /** Chinese label, as the registry spells it. Empty when it publishes none. */
   name: string
+  /** English label, as the registry spells it. */
   nameEn?: string
   sortOrder: number
-  /** Skills the catalogue holds in this category. */
-  count?: number
+  /** Parent key, when the registry nests its vocabulary. */
+  parent?: string
+  /** Nesting depth; `1` is top level. */
+  level: number
 }
 
 /** One installed skill as the local inventory reports it. */
@@ -183,6 +208,33 @@ export function parseSkillId(id: string): { source: MarketSource; slug: string }
   const slug = id.slice(idx + 1)
   if (!MARKET_SOURCES.includes(source as MarketSource) || slug === '') return null
   return { source: source as MarketSource, slug }
+}
+
+/**
+ * Turn a classification key into something readable.
+ *
+ * Used only when the registry publishes no label for a key it put on a skill: an
+ * English-keyed classification with no vocabulary entry renders as
+ * "Business Ops" instead of "business-ops". It is a fallback, not a translation —
+ * a key the vocabulary does define always wins, because only the registry knows
+ * what its own key means.
+ */
+export function humanizeCategoryKey(key: string): string {
+  const spaced = key.replace(/[-_]+/g, ' ').trim()
+  if (spaced === '') return key
+  return spaced.replace(/\b[a-z]/g, (letter) => letter.toUpperCase())
+}
+
+/**
+ * Spread helper for an optional classification list.
+ *
+ * An entry with no classification omits the field rather than carrying `[]`. The
+ * difference is not cosmetic: "this registry publishes no classifications for this
+ * skill" and "this skill has none" are different facts, and a cache full of empty
+ * arrays would also make every equality assertion in the suite spell the field out.
+ */
+export function categoriesField(categories: CategoryRef[]): { categories?: CategoryRef[] } {
+  return categories.length === 0 ? {} : { categories }
 }
 
 /** Directory-name whitelist: lowercase alnum, dash, underscore, dot (no leading dot). */

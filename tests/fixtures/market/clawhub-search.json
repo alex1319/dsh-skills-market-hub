@@ -3,7 +3,7 @@
     {
       "canonicalUrl": "/awspace/skills/pdf",
       "displayName": "Pdf",
-      "downloads": 50487,
+      "downloads": 50489,
       "featured": true,
       "icon": null,
       "id": "clawhub:kd74n44stcpmhfvqe02yj7r6ms808nvm",
@@ -53,7 +53,7 @@
           "slug": "pdf",
           "stats": {
             "comments": 1,
-            "downloads": 50487,
+            "downloads": 50489,
             "installs": 1490,
             "stars": 66,
             "versions": 1
@@ -509,7 +509,7 @@
     {
       "canonicalUrl": "/yang1002378395-cmyk/skills/pdf-processor-cn",
       "displayName": "Pdf",
-      "downloads": 5455,
+      "downloads": 5456,
       "featured": false,
       "icon": null,
       "id": "clawhub:kd7chgqs1bqdw4mw758x7z46xs83ghcb",
@@ -560,7 +560,7 @@
           "slug": "pdf-processor-cn",
           "stats": {
             "comments": 0,
-            "downloads": 5455,
+            "downloads": 5456,
             "installs": 58,
             "stars": 0,
             "versions": 1

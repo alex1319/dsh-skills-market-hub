@@ -23,7 +23,7 @@
       "statusText": "安全，无风险"
     },
     "sanbu": {
-      "reportUrl": "https://static.cloudsec.tencent.com/html-report-v2/2026/09/22/1856275_16ec3d829e6bb712779bd2254c1d285a.html?q-sign-algorithm=sha1&q-ak=AKID8JMG1bzBC1dz96qNhssfFftujT1NCoFi&q-sign-time=1791634515%3B1823170515&q-key-time=1791634515%3B1823170515&q-header-list=host&q-url-param-list=&q-signature=a7d35388c794ac080cd6ade7bafe18a9eb889bc3",
+      "reportUrl": "https://static.cloudsec.tencent.com/html-report-v2/2026/09/22/1856275_16ec3d829e6bb712779bd2254c1d285a.html?q-sign-algorithm=sha1&q-ak=AKID8JMG1bzBC1dz96qNhssfFftujT1NCoFi&q-sign-time=1791978610%3B1823514610&q-key-time=1791978610%3B1823514610&q-header-list=host&q-url-param-list=&q-signature=e9a0b068c12eb9208b31e9092e657ada407e0ac6",
       "status": "benign",
       "statusText": "安全，无风险"
     }
@@ -51,7 +51,7 @@
     "sourceUrl": null,
     "stats": {
       "comments": 0,
-      "downloads": 1178427,
+      "downloads": 1201411,
       "installs": 0,
       "stars": 31,
       "versions": 12
@@ -71,7 +71,7 @@
     "tags": {
       "latest": "1.0.11"
     },
-    "updatedAt": 1791975466602,
+    "updatedAt": 1791982379689,
     "upstream_owner_login": null,
     "upstream_url": null,
     "verified": false

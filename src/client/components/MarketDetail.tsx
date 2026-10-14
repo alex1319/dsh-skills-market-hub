@@ -12,6 +12,7 @@
 
 import { useEffect, useMemo, useRef } from 'react'
 import { useT } from '../translate.tsx'
+import { CategoryPill } from './SkillCard.tsx'
 import {
   Button,
   Notice,
@@ -254,9 +255,22 @@ function Overview({ detail }: { detail: NormalizedSkillDetail }) {
         ? <Notice title={t('detailNoDescription')} detail={t('detailNoDescriptionHint')} />
         : <SourceBlock text={body} wrap />}
 
-      {detail.tags.length === 0 ? null : (
-        <div style={{ display: 'flex', gap: SPACE.xs, flexWrap: 'wrap' }}>
-          {detail.tags.map((tag) => <Pill key={tag} tone="neutral">{tag}</Pill>)}
+      {detail.tags.length === 0 && (detail.categories ?? []).length === 0 ? null : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs }}>
+          {/* Labelled, unlike on a card: with room to spare, "which of these is a
+              category and which is a publisher's keyword" is a fair question. */}
+          {(detail.categories ?? []).length === 0 ? null : (
+            <div style={{ display: 'flex', gap: SPACE.xs, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontSize: 11, color: token.labelSecondary }}>{t('detailCategories')}</span>
+              {(detail.categories ?? []).map((ref) => <CategoryPill key={ref.key} category={ref} />)}
+            </div>
+          )}
+          {detail.tags.length === 0 ? null : (
+            <div style={{ display: 'flex', gap: SPACE.xs, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontSize: 11, color: token.labelSecondary }}>{t('detailTags')}</span>
+              {detail.tags.map((tag) => <Pill key={tag} tone="neutral">{tag}</Pill>)}
+            </div>
+          )}
         </div>
       )}
     </div>

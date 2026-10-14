@@ -13,21 +13,37 @@
  */
 
 import { createContext, useContext, type ReactNode } from 'react'
+import { marketLocale, type MarketLocale } from './locale-store.ts'
 
 /** A namespace-bound translate function. */
 export type Translate = (key: string, params?: Record<string, unknown>) => string
 
-const TranslateContext = createContext<Translate | null>(null)
+interface PanelLocale {
+  t: Translate
+  locale: MarketLocale
+}
 
-export function TranslateProvider({ t, children }: { t: Translate; children: ReactNode }) {
-  return <TranslateContext.Provider value={t}>{children}</TranslateContext.Provider>
+const TranslateContext = createContext<PanelLocale | null>(null)
+
+export function TranslateProvider({ t, locale, children }: { t: Translate; locale: MarketLocale; children: ReactNode }) {
+  return <TranslateContext.Provider value={{ t, locale }}>{children}</TranslateContext.Provider>
 }
 
 /** The panel's translate function. */
 export function useT(): Translate {
-  const t = useContext(TranslateContext)
-  if (t === null) {
+  const seat = useContext(TranslateContext)
+  if (seat === null) {
     throw new Error('useT() was called outside a TranslateProvider; the panel root must supply the locale seat it was registered with')
   }
-  return t
+  return seat.t
+}
+
+/**
+ * The active language, taken from the seat the slot handed the panel.
+ *
+ * Read from the provider rather than from the store directly so a component
+ * rendered in isolation (a test, a story) sees the same language as its `t`.
+ */
+export function useLocale(): MarketLocale {
+  return useContext(TranslateContext)?.locale ?? marketLocale()
 }

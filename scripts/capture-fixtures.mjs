@@ -33,6 +33,10 @@ const TARGETS = [
   { file: 'clawhub-file.txt', url: 'https://clawhub.ai/api/v1/skills/self-improving-agent/file?path=SKILL.md&owner=pskoett' },
   { file: 'skillhub-list.json', url: 'https://api.skillhub.cn/api/skills?page=1&pageSize=3' },
   { file: 'skillhub-search.json', url: 'https://api.skillhub.cn/api/skills?page=1&pageSize=3&keyword=pdf' },
+  // The classification vocabulary. It is a different route from the per-skill
+  // `category` key: a skill carries the key, and only this endpoint says what the
+  // key is called (in both languages).
+  { file: 'skillhub-categories.json', url: 'https://api.skillhub.cn/api/v1/categories' },
   { file: 'skillhub-detail.json', url: 'https://api.skillhub.cn/api/v1/skills/anti-fraud' },
   { file: 'skillhub-files.json', url: 'https://api.skillhub.cn/api/v1/skills/anti-fraud/files' },
   // Verified by probe: the content endpoint takes `path` as a query parameter
