@@ -1,0 +1,25 @@
+node_modules/
+
+# `lib/` is committed on purpose: a Git install (`dsh plugin add <git-url>`) does
+# not run a build, so the shipped artifacts have to be in the repository. What is
+# NOT committed from it — both patterns are anchored to the repository root,
+# because an unanchored `lib/client/` also matches `lib/types/client/`, which is
+# the published declaration file for the browser half:
+#
+#   /lib/client/   — tsc's compiled client fragments. They are bundle *input*: the
+#                    published `files` list excludes them, and nothing loads them
+#                    at runtime. The deliverable is lib/client.cjs.
+#   source maps    — the build is reproducible from source, and the maps are the
+#                    larger half of `lib/`.
+/lib/client/
+/lib/client.cjs.map
+/lib/**/*.map
+
+# Local profile backups taken before installing into a real DSH profile.
+.backup/
+
+# The reference implementation downloaded for study; not part of this project.
+.research/
+
+*.log
+.DS_Store

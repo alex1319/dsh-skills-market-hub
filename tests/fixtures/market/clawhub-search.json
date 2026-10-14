@@ -1,0 +1,950 @@
+{
+  "results": [
+    {
+      "canonicalUrl": "/awspace/skills/pdf",
+      "displayName": "Pdf",
+      "downloads": 50487,
+      "featured": true,
+      "icon": null,
+      "id": "clawhub:kd74n44stcpmhfvqe02yj7r6ms808nvm",
+      "install": {
+        "kind": "clawhub",
+        "reference": "awspace/pdf",
+        "sourceUrl": null
+      },
+      "links": {
+        "canonical": "/awspace/skills/pdf",
+        "source": null
+      },
+      "metrics": {
+        "bookmarks": 0,
+        "rolling60DayInstalls": 27,
+        "updatedAt": 1789594554485
+      },
+      "native": {
+        "owner": {
+          "_creationTime": 1780781797184.5854,
+          "_id": "s176rb1anzaaw78jd9qd65j08x884mmr",
+          "displayName": "awspace",
+          "handle": "awspace",
+          "image": "https://avatars.githubusercontent.com/u/131568675?v=4",
+          "kind": "user",
+          "linkedUserId": "kn725kyxpr1g1e3rjqtkp26v0s809930"
+        },
+        "ownerHandle": "awspace",
+        "skill": {
+          "_creationTime": 1769847855729.2668,
+          "_id": "kd74n44stcpmhfvqe02yj7r6ms808nvm",
+          "badges": {
+            "highlighted": {
+              "at": 1789594554485,
+              "byUserId": "kn7485dek1erzmvwaqz77rm5vh85pyb3"
+            }
+          },
+          "categories": [
+            "knowledge"
+          ],
+          "createdAt": 1769847855729,
+          "displayName": "Pdf",
+          "isSuspicious": false,
+          "latestVersionId": "k97cz981kj0veqx1m79dd5sy4n809j57",
+          "ownerPublisherId": "s176rb1anzaaw78jd9qd65j08x884mmr",
+          "ownerUserId": "kn725kyxpr1g1e3rjqtkp26v0s809930",
+          "slug": "pdf",
+          "stats": {
+            "comments": 1,
+            "downloads": 50487,
+            "installs": 1490,
+            "stars": 66,
+            "versions": 1
+          },
+          "summary": "Comprehensive PDF manipulation toolkit for extracting text and tables, creating new PDFs, merging/splitting documents, and handling forms. When Claude needs to fill in a PDF form or programmatically process, generate, or analyze PDF documents at scale.",
+          "tags": {
+            "latest": "k97cz981kj0veqx1m79dd5sy4n809j57"
+          },
+          "topics": [
+            "PDF"
+          ],
+          "updatedAt": 1789594554485
+        },
+        "version": null
+      },
+      "official": false,
+      "ownerHandle": "awspace",
+      "publisher": {
+        "displayName": "awspace",
+        "handle": "awspace",
+        "image": "https://avatars.githubusercontent.com/u/131568675?v=4",
+        "kind": "user",
+        "official": false
+      },
+      "score": 6120,
+      "slug": "pdf",
+      "source": "clawhub",
+      "sourceIdentity": {
+        "host": null,
+        "id": "kd74n44stcpmhfvqe02yj7r6ms808nvm",
+        "lifetimeInstalls": null,
+        "owner": "awspace",
+        "repo": null
+      },
+      "summary": "Comprehensive PDF manipulation toolkit for extracting text and tables, creating new PDFs, merging/splitting documents, and handling forms. When Claude needs to fill in a PDF form or programmatically process, generate, or analyze PDF documents at scale.",
+      "trust": {
+        "clawHubVerdict": null,
+        "installability": "installable",
+        "sourceFreshness": "native",
+        "upstreamScanners": null,
+        "visibility": "public"
+      },
+      "updatedAt": 1789594554485,
+      "version": null,
+      "owner": {
+        "handle": "awspace",
+        "displayName": "awspace",
+        "image": "https://avatars.githubusercontent.com/u/131568675?v=4"
+      }
+    },
+    {
+      "canonicalUrl": "/sdk-team/skills/alibabacloud-quickbi-smartq",
+      "displayName": "alibabacloud-quickbi-smartq",
+      "downloads": 1127,
+      "featured": false,
+      "icon": null,
+      "id": "clawhub:kd7bmaaq4bazq8jv1qnpmp66ss85e1v5",
+      "install": {
+        "kind": "clawhub",
+        "reference": "sdk-team/alibabacloud-quickbi-smartq",
+        "sourceUrl": null
+      },
+      "links": {
+        "canonical": "/sdk-team/skills/alibabacloud-quickbi-smartq",
+        "source": null
+      },
+      "metrics": {
+        "bookmarks": 0,
+        "rolling60DayInstalls": 0,
+        "updatedAt": 1790016936031
+      },
+      "native": {
+        "owner": {
+          "_creationTime": 0,
+          "_id": "s173swjet2yrebzqrp6hjkvmy583mxef",
+          "displayName": "alibabacloud",
+          "handle": "sdk-team",
+          "image": "https://avatars.githubusercontent.com/u/49941014?v=4",
+          "kind": "user",
+          "linkedUserId": "kn74p5w8ywv6prh40g0s82gmqh83nw54",
+          "official": true
+        },
+        "ownerHandle": "sdk-team",
+        "skill": {
+          "_creationTime": 1776998257226,
+          "_id": "kd7bmaaq4bazq8jv1qnpmp66ss85e1v5",
+          "badges": {},
+          "categories": [
+            "integrations"
+          ],
+          "createdAt": 1776998257226,
+          "displayName": "alibabacloud-quickbi-smartq",
+          "isSuspicious": false,
+          "latestVersionId": "k97e8tb5nx0xh25h3741m94da585eftx",
+          "ownerPublisherId": "s173swjet2yrebzqrp6hjkvmy583mxef",
+          "ownerUserId": "kn74p5w8ywv6prh40g0s82gmqh83nw54",
+          "slug": "alibabacloud-quickbi-smartq",
+          "stats": {
+            "comments": 0,
+            "downloads": 1127,
+            "installs": 16,
+            "stars": 0,
+            "versions": 2
+          },
+          "summary": "Quick BI-SmartQ skill with multiple data analysis capabilities:\n1. **File Q&A**: Upload Excel/CSV files for intelligent analysis via Quick BI API\n2. **Dataset Q&A**: Natural language queries on Quick BI platform datasets, with automatic intelligent table selection and matching\n3. **Document Parsing**: Parse PDF/Word/Excel/CSV/images, extract text, and support extracting key fields to generate structured Excel\n4. **Dashboard Skill Generation**: Auto-convert QuickBI dashboards into data query skills\n5. **Data Insight**: Deep data insight analysis on Quick BI datasets\n6. **Data Report**: Auto-generate professional data reports based on analysis results\nUse when users mention data analysis, smart Q&A, querying data, file analysis,\ndocument parsing, dashboard skills, data insight, or data reports.",
+          "tags": {
+            "latest": "k97e8tb5nx0xh25h3741m94da585eftx"
+          },
+          "topics": [
+            "CSV",
+            "Data Analysis",
+            "Dataset",
+            "Document",
+            "PDF"
+          ],
+          "updatedAt": 1790016936031
+        },
+        "version": null
+      },
+      "official": true,
+      "ownerHandle": "sdk-team",
+      "publisher": {
+        "displayName": "alibabacloud",
+        "handle": "sdk-team",
+        "image": "https://avatars.githubusercontent.com/u/49941014?v=4",
+        "kind": "user",
+        "official": true
+      },
+      "score": 3060,
+      "slug": "alibabacloud-quickbi-smartq",
+      "source": "clawhub",
+      "sourceIdentity": {
+        "host": null,
+        "id": "kd7bmaaq4bazq8jv1qnpmp66ss85e1v5",
+        "lifetimeInstalls": null,
+        "owner": "sdk-team",
+        "repo": null
+      },
+      "summary": "Quick BI-SmartQ skill with multiple data analysis capabilities:\n1. **File Q&A**: Upload Excel/CSV files for intelligent analysis via Quick BI API\n2. **Dataset Q&A**: Natural language queries on Quick BI platform datasets, with automatic intelligent table selection and matching\n3. **Document Parsing**: Parse PDF/Word/Excel/CSV/images, extract text, and support extracting key fields to generate structured Excel\n4. **Dashboard Skill Generation**: Auto-convert QuickBI dashboards into data query skills\n5. **Data Insight**: Deep data insight analysis on Quick BI datasets\n6. **Data Report**: Auto-generate professional data reports based on analysis results\nUse when users mention data analysis, smart Q&A, querying data, file analysis,\ndocument parsing, dashboard skills, data insight, or data reports.",
+      "trust": {
+        "clawHubVerdict": null,
+        "installability": "installable",
+        "sourceFreshness": "native",
+        "upstreamScanners": null,
+        "visibility": "public"
+      },
+      "updatedAt": 1790016936031,
+      "version": null,
+      "owner": {
+        "handle": "sdk-team",
+        "displayName": "alibabacloud",
+        "image": "https://avatars.githubusercontent.com/u/49941014?v=4"
+      }
+    },
+    {
+      "canonicalUrl": "/paudyyin/skills/pdf",
+      "displayName": "pdf",
+      "downloads": 462,
+      "featured": false,
+      "icon": null,
+      "id": "clawhub:kd7b8ss1qm3j396ddwffdqh7gs8bs58e",
+      "install": {
+        "kind": "clawhub",
+        "reference": "paudyyin/pdf",
+        "sourceUrl": null
+      },
+      "links": {
+        "canonical": "/paudyyin/skills/pdf",
+        "source": null
+      },
+      "metrics": {
+        "bookmarks": 0,
+        "rolling60DayInstalls": 1,
+        "updatedAt": 1785720075756
+      },
+      "native": {
+        "owner": {
+          "_creationTime": 1778546830438.7551,
+          "_id": "s172x1s50dh0bgmm3yc9516nr586kk4b",
+          "displayName": "paudyyin",
+          "handle": "paudyyin",
+          "image": "https://avatars.githubusercontent.com/u/46261184?v=4",
+          "kind": "user",
+          "linkedUserId": "kn73z7zhz92tv6skpnmpy5pdfh86j68x"
+        },
+        "ownerHandle": "paudyyin",
+        "skill": {
+          "_creationTime": 1785719998441.045,
+          "_id": "kd7b8ss1qm3j396ddwffdqh7gs8bs58e",
+          "badges": {},
+          "categories": [
+            "other"
+          ],
+          "createdAt": 1785719998441,
+          "displayName": "pdf",
+          "isSuspicious": false,
+          "latestVersionId": "k9795c59hnrcqwjcre5w07a3eh8bshxc",
+          "ownerPublisherId": "s172x1s50dh0bgmm3yc9516nr586kk4b",
+          "ownerUserId": "kn73z7zhz92tv6skpnmpy5pdfh86j68x",
+          "slug": "pdf",
+          "stats": {
+            "comments": 0,
+            "downloads": 462,
+            "installs": 1,
+            "stars": 0,
+            "versions": 1
+          },
+          "summary": "Process PDF files �� read, merge, split, rotate, watermark, create, fill forms, encrypt/decrypt, OCR",
+          "tags": {
+            "latest": "k9795c59hnrcqwjcre5w07a3eh8bshxc"
+          },
+          "updatedAt": 1785720075756
+        },
+        "version": null
+      },
+      "official": false,
+      "ownerHandle": "paudyyin",
+      "publisher": {
+        "displayName": "paudyyin",
+        "handle": "paudyyin",
+        "image": "https://avatars.githubusercontent.com/u/46261184?v=4",
+        "kind": "user",
+        "official": false
+      },
+      "score": 6120,
+      "slug": "pdf",
+      "source": "clawhub",
+      "sourceIdentity": {
+        "host": null,
+        "id": "kd7b8ss1qm3j396ddwffdqh7gs8bs58e",
+        "lifetimeInstalls": null,
+        "owner": "paudyyin",
+        "repo": null
+      },
+      "summary": "Process PDF files �� read, merge, split, rotate, watermark, create, fill forms, encrypt/decrypt, OCR",
+      "trust": {
+        "clawHubVerdict": null,
+        "installability": "installable",
+        "sourceFreshness": "native",
+        "upstreamScanners": null,
+        "visibility": "public"
+      },
+      "updatedAt": 1785720075756,
+      "version": null,
+      "owner": {
+        "handle": "paudyyin",
+        "displayName": "paudyyin",
+        "image": "https://avatars.githubusercontent.com/u/46261184?v=4"
+      }
+    },
+    {
+      "canonicalUrl": "/thcjp/skills/pdf",
+      "displayName": "PDF处理工具",
+      "downloads": 472,
+      "featured": false,
+      "icon": null,
+      "id": "clawhub:kd7cm0dz3qm2m2q4gj1982krfs8cegex",
+      "install": {
+        "kind": "clawhub",
+        "reference": "thcjp/pdf",
+        "sourceUrl": null
+      },
+      "links": {
+        "canonical": "/thcjp/skills/pdf",
+        "source": null
+      },
+      "metrics": {
+        "bookmarks": 0,
+        "rolling60DayInstalls": 0,
+        "updatedAt": 1790017028529
+      },
+      "native": {
+        "owner": {
+          "_creationTime": 1784320770231.3508,
+          "_id": "s173q6vayrg64xn0drt9jav6a98aqzb1",
+          "displayName": "天轰穿",
+          "handle": "thcjp",
+          "image": "https://avatars.githubusercontent.com/u/957992?v=4",
+          "kind": "user",
+          "linkedUserId": "kn746s881gfq2c1ewb5nv630yd8aq1ck"
+        },
+        "ownerHandle": "thcjp",
+        "skill": {
+          "_creationTime": 1786702826866.7542,
+          "_id": "kd7cm0dz3qm2m2q4gj1982krfs8cegex",
+          "badges": {},
+          "categories": [
+            "automation"
+          ],
+          "createdAt": 1786702826866,
+          "displayName": "PDF处理工具",
+          "isSuspicious": false,
+          "latestVersionId": "k975b8e62syyzwxgtby6v62yf98cf2y9",
+          "ownerPublisherId": "s173q6vayrg64xn0drt9jav6a98aqzb1",
+          "ownerUserId": "kn746s881gfq2c1ewb5nv630yd8aq1ck",
+          "slug": "pdf",
+          "stats": {
+            "comments": 0,
+            "downloads": 472,
+            "installs": 0,
+            "stars": 0,
+            "versions": 2
+          },
+          "summary": "提供PDF文本和表格提取、PDF创建、合并及表单自动填写的全方位中文PDF处理工具。",
+          "tags": {
+            "latest": "k975b8e62syyzwxgtby6v62yf98cf2y9"
+          },
+          "topics": [
+            "pdf"
+          ],
+          "updatedAt": 1790017028529
+        },
+        "version": null
+      },
+      "official": false,
+      "ownerHandle": "thcjp",
+      "publisher": {
+        "displayName": "天轰穿",
+        "handle": "thcjp",
+        "image": "https://avatars.githubusercontent.com/u/957992?v=4",
+        "kind": "user",
+        "official": false
+      },
+      "score": 6120,
+      "slug": "pdf",
+      "source": "clawhub",
+      "sourceIdentity": {
+        "host": null,
+        "id": "kd7cm0dz3qm2m2q4gj1982krfs8cegex",
+        "lifetimeInstalls": null,
+        "owner": "thcjp",
+        "repo": null
+      },
+      "summary": "提供PDF文本和表格提取、PDF创建、合并及表单自动填写的全方位中文PDF处理工具。",
+      "trust": {
+        "clawHubVerdict": null,
+        "installability": "installable",
+        "sourceFreshness": "native",
+        "upstreamScanners": null,
+        "visibility": "public"
+      },
+      "updatedAt": 1790017028529,
+      "version": null,
+      "owner": {
+        "handle": "thcjp",
+        "displayName": "天轰穿",
+        "image": "https://avatars.githubusercontent.com/u/957992?v=4"
+      }
+    },
+    {
+      "canonicalUrl": "/momansouri83/skills/pdf",
+      "displayName": "pdf",
+      "downloads": 205,
+      "featured": false,
+      "icon": null,
+      "id": "clawhub:kd7anz0aavj3nxegccy9nwvpmd8ba74z",
+      "install": {
+        "kind": "clawhub",
+        "reference": "momansouri83/pdf",
+        "sourceUrl": null
+      },
+      "links": {
+        "canonical": "/momansouri83/skills/pdf",
+        "source": null
+      },
+      "metrics": {
+        "bookmarks": 0,
+        "rolling60DayInstalls": 0,
+        "updatedAt": 1785154679235
+      },
+      "native": {
+        "owner": {
+          "_creationTime": 1785152416127.6978,
+          "_id": "s172771x40dt3vyfbn0cnbf2gd8baakz",
+          "displayName": "momansouri83",
+          "handle": "momansouri83",
+          "image": "https://avatars.githubusercontent.com/u/98988828?v=4",
+          "kind": "user",
+          "linkedUserId": "kn72gama2bt8vqxfzrdxxez86s8bbf8z"
+        },
+        "ownerHandle": "momansouri83",
+        "skill": {
+          "_creationTime": 1785152590502.632,
+          "_id": "kd7anz0aavj3nxegccy9nwvpmd8ba74z",
+          "badges": {},
+          "canonicalSkillId": "kd74n44stcpmhfvqe02yj7r6ms808nvm",
+          "categories": [
+            "other"
+          ],
+          "createdAt": 1785152590502,
+          "displayName": "pdf",
+          "forkOf": {
+            "at": 1785152590502,
+            "kind": "fork",
+            "skillId": "kd74n44stcpmhfvqe02yj7r6ms808nvm",
+            "version": "0.1.0"
+          },
+          "isSuspicious": false,
+          "latestVersionId": "k97cb66tc5tqz1ffg8d1ry9pxx8bagv2",
+          "ownerPublisherId": "s172771x40dt3vyfbn0cnbf2gd8baakz",
+          "ownerUserId": "kn72gama2bt8vqxfzrdxxez86s8bbf8z",
+          "slug": "pdf",
+          "stats": {
+            "comments": 0,
+            "downloads": 205,
+            "installs": 0,
+            "stars": 0,
+            "versions": 1
+          },
+          "summary": "Comprehensive PDF manipulation toolkit for extracting text and tables, creating new PDFs, merging/splitting documents, and handling forms. When Claude needs to fill in a PDF form or programmatically process, generate, or analyze PDF documents at scale.",
+          "tags": {
+            "latest": "k97cb66tc5tqz1ffg8d1ry9pxx8bagv2"
+          },
+          "updatedAt": 1785154679235
+        },
+        "version": null
+      },
+      "official": false,
+      "ownerHandle": "momansouri83",
+      "publisher": {
+        "displayName": "momansouri83",
+        "handle": "momansouri83",
+        "image": "https://avatars.githubusercontent.com/u/98988828?v=4",
+        "kind": "user",
+        "official": false
+      },
+      "score": 6120,
+      "slug": "pdf",
+      "source": "clawhub",
+      "sourceIdentity": {
+        "host": null,
+        "id": "kd7anz0aavj3nxegccy9nwvpmd8ba74z",
+        "lifetimeInstalls": null,
+        "owner": "momansouri83",
+        "repo": null
+      },
+      "summary": "Comprehensive PDF manipulation toolkit for extracting text and tables, creating new PDFs, merging/splitting documents, and handling forms. When Claude needs to fill in a PDF form or programmatically process, generate, or analyze PDF documents at scale.",
+      "trust": {
+        "clawHubVerdict": null,
+        "installability": "installable",
+        "sourceFreshness": "native",
+        "upstreamScanners": null,
+        "visibility": "public"
+      },
+      "updatedAt": 1785154679235,
+      "version": null,
+      "owner": {
+        "handle": "momansouri83",
+        "displayName": "momansouri83",
+        "image": "https://avatars.githubusercontent.com/u/98988828?v=4"
+      }
+    },
+    {
+      "canonicalUrl": "/yang1002378395-cmyk/skills/pdf-processor-cn",
+      "displayName": "Pdf",
+      "downloads": 5455,
+      "featured": false,
+      "icon": null,
+      "id": "clawhub:kd7chgqs1bqdw4mw758x7z46xs83ghcb",
+      "install": {
+        "kind": "clawhub",
+        "reference": "yang1002378395-cmyk/pdf-processor-cn",
+        "sourceUrl": null
+      },
+      "links": {
+        "canonical": "/yang1002378395-cmyk/skills/pdf-processor-cn",
+        "source": null
+      },
+      "metrics": {
+        "bookmarks": 0,
+        "rolling60DayInstalls": 5,
+        "updatedAt": 1778492143015
+      },
+      "native": {
+        "owner": {
+          "_creationTime": 0,
+          "_id": "s17627rpbb3atq3mbfabqbgtm983g9et",
+          "displayName": "yang1002378395-cmyk",
+          "handle": "yang1002378395-cmyk",
+          "image": "https://avatars.githubusercontent.com/u/261632147?v=4",
+          "kind": "user",
+          "linkedUserId": "kn7a0nk2nhyhkcwjry4knbqngn82qxtg"
+        },
+        "ownerHandle": "yang1002378395-cmyk",
+        "skill": {
+          "_creationTime": 1774319972231,
+          "_id": "kd7chgqs1bqdw4mw758x7z46xs83ghcb",
+          "badges": {},
+          "canonicalSkillId": "kd75n74rwc8st2pes930yn85ws82xfdd",
+          "categories": [
+            "knowledge"
+          ],
+          "createdAt": 1774319972231,
+          "displayName": "Pdf",
+          "forkOf": {
+            "at": 1774319972231,
+            "kind": "duplicate",
+            "skillId": "kd75n74rwc8st2pes930yn85ws82xfdd"
+          },
+          "isSuspicious": false,
+          "latestVersionId": "k97bj1fnw0m643kmag7bkag08d83g5x4",
+          "ownerPublisherId": "s17627rpbb3atq3mbfabqbgtm983g9et",
+          "ownerUserId": "kn7a0nk2nhyhkcwjry4knbqngn82qxtg",
+          "slug": "pdf-processor-cn",
+          "stats": {
+            "comments": 0,
+            "downloads": 5455,
+            "installs": 58,
+            "stars": 0,
+            "versions": 1
+          },
+          "summary": "Use this skill whenever the user wants to do anything with PDF files. This includes reading or extracting text/tables from PDFs, combining or merging multipl...",
+          "tags": {
+            "chinese": "k97bj1fnw0m643kmag7bkag08d83g5x4",
+            "document": "k97bj1fnw0m643kmag7bkag08d83g5x4",
+            "latest": "k97bj1fnw0m643kmag7bkag08d83g5x4",
+            "pdf": "k97bj1fnw0m643kmag7bkag08d83g5x4"
+          },
+          "topics": [
+            "PDF",
+            "OCR"
+          ],
+          "updatedAt": 1778492143015
+        },
+        "version": null
+      },
+      "official": false,
+      "ownerHandle": "yang1002378395-cmyk",
+      "publisher": {
+        "displayName": "yang1002378395-cmyk",
+        "handle": "yang1002378395-cmyk",
+        "image": "https://avatars.githubusercontent.com/u/261632147?v=4",
+        "kind": "user",
+        "official": false
+      },
+      "score": 6110,
+      "slug": "pdf-processor-cn",
+      "source": "clawhub",
+      "sourceIdentity": {
+        "host": null,
+        "id": "kd7chgqs1bqdw4mw758x7z46xs83ghcb",
+        "lifetimeInstalls": null,
+        "owner": "yang1002378395-cmyk",
+        "repo": null
+      },
+      "summary": "Use this skill whenever the user wants to do anything with PDF files. This includes reading or extracting text/tables from PDFs, combining or merging multipl...",
+      "trust": {
+        "clawHubVerdict": null,
+        "installability": "installable",
+        "sourceFreshness": "native",
+        "upstreamScanners": null,
+        "visibility": "public"
+      },
+      "updatedAt": 1778492143015,
+      "version": null,
+      "owner": {
+        "handle": "yang1002378395-cmyk",
+        "displayName": "yang1002378395-cmyk",
+        "image": "https://avatars.githubusercontent.com/u/261632147?v=4"
+      }
+    },
+    {
+      "canonicalUrl": "/iirtegova/skills/pdf-rezume",
+      "displayName": "PDF: резюме для руководителя на одну страницу",
+      "downloads": 366,
+      "featured": false,
+      "icon": null,
+      "id": "clawhub:kd7fczmc676ezr6w7zd1z1tk5d8et2zh",
+      "install": {
+        "kind": "clawhub",
+        "reference": "iirtegova/pdf-rezume",
+        "sourceUrl": null
+      },
+      "links": {
+        "canonical": "/iirtegova/skills/pdf-rezume",
+        "source": null
+      },
+      "metrics": {
+        "bookmarks": 0,
+        "rolling60DayInstalls": 0,
+        "updatedAt": 1791459096055
+      },
+      "native": {
+        "owner": {
+          "_creationTime": 0,
+          "_id": "s17db1sjz5ejhj4eabge460gjx8ek15w",
+          "displayName": "iirtegova",
+          "handle": "iirtegova",
+          "image": "https://avatars.githubusercontent.com/u/93735389?v=4",
+          "kind": "user",
+          "linkedUserId": "kn75a0dxs3v4k8mfv29m15fsq98ejrq4"
+        },
+        "ownerHandle": "iirtegova",
+        "skill": {
+          "_creationTime": 1789985153610,
+          "_id": "kd7fczmc676ezr6w7zd1z1tk5d8et2zh",
+          "badges": {},
+          "categories": [
+            "other"
+          ],
+          "createdAt": 1789985153610,
+          "displayName": "PDF: резюме для руководителя на одну страницу",
+          "isSuspicious": false,
+          "latestVersionId": "k97bj1n5g3gfc1qbt4wk7rp8nd8fwwvn",
+          "ownerPublisherId": "s17db1sjz5ejhj4eabge460gjx8ek15w",
+          "ownerUserId": "kn75a0dxs3v4k8mfv29m15fsq98ejrq4",
+          "slug": "pdf-rezume",
+          "stats": {
+            "comments": 0,
+            "downloads": 366,
+            "installs": 0,
+            "stars": 0,
+            "versions": 5
+          },
+          "summary": "Одностраничное резюме PDF-отчёта для руководителя (A4, ключевые выводы и вопросы для обсуждения). Русские и английские PDF с текстом; сканы — на латинице (встроенный OCR без сети). Каждое число сверяется с текстом страницы автоматически.",
+          "tags": {
+            "latest": "k97bj1n5g3gfc1qbt4wk7rp8nd8fwwvn"
+          },
+          "topics": [
+            "pdf",
+            "summary",
+            "executive-summary",
+            "russian",
+            "ocr"
+          ],
+          "updatedAt": 1791459096055
+        },
+        "version": null
+      },
+      "official": false,
+      "ownerHandle": "iirtegova",
+      "publisher": {
+        "displayName": "iirtegova",
+        "handle": "iirtegova",
+        "image": "https://avatars.githubusercontent.com/u/93735389?v=4",
+        "kind": "user",
+        "official": false
+      },
+      "score": 6110,
+      "slug": "pdf-rezume",
+      "source": "clawhub",
+      "sourceIdentity": {
+        "host": null,
+        "id": "kd7fczmc676ezr6w7zd1z1tk5d8et2zh",
+        "lifetimeInstalls": null,
+        "owner": "iirtegova",
+        "repo": null
+      },
+      "summary": "Одностраничное резюме PDF-отчёта для руководителя (A4, ключевые выводы и вопросы для обсуждения). Русские и английские PDF с текстом; сканы — на латинице (встроенный OCR без сети). Каждое число сверяется с текстом страницы автоматически.",
+      "trust": {
+        "clawHubVerdict": null,
+        "installability": "installable",
+        "sourceFreshness": "native",
+        "upstreamScanners": null,
+        "visibility": "public"
+      },
+      "updatedAt": 1791459096055,
+      "version": null,
+      "owner": {
+        "handle": "iirtegova",
+        "displayName": "iirtegova",
+        "image": "https://avatars.githubusercontent.com/u/93735389?v=4"
+      }
+    },
+    {
+      "canonicalUrl": "/iirtegova/skills/pdf-perevod",
+      "displayName": "PDF: перевод на русский с сохранением вёрстки",
+      "downloads": 369,
+      "featured": false,
+      "icon": null,
+      "id": "clawhub:kd7d3zf36dge8306918hjfyj5x8etmmw",
+      "install": {
+        "kind": "clawhub",
+        "reference": "iirtegova/pdf-perevod",
+        "sourceUrl": null
+      },
+      "links": {
+        "canonical": "/iirtegova/skills/pdf-perevod",
+        "source": null
+      },
+      "metrics": {
+        "bookmarks": 0,
+        "rolling60DayInstalls": 0,
+        "updatedAt": 1791458552734
+      },
+      "native": {
+        "owner": {
+          "_creationTime": 0,
+          "_id": "s17db1sjz5ejhj4eabge460gjx8ek15w",
+          "displayName": "iirtegova",
+          "handle": "iirtegova",
+          "image": "https://avatars.githubusercontent.com/u/93735389?v=4",
+          "kind": "user",
+          "linkedUserId": "kn75a0dxs3v4k8mfv29m15fsq98ejrq4"
+        },
+        "ownerHandle": "iirtegova",
+        "skill": {
+          "_creationTime": 1789984901646,
+          "_id": "kd7d3zf36dge8306918hjfyj5x8etmmw",
+          "badges": {},
+          "categories": [
+            "productivity",
+            "development",
+            "automation"
+          ],
+          "createdAt": 1789984901646,
+          "displayName": "PDF: перевод на русский с сохранением вёрстки",
+          "isSuspicious": false,
+          "latestVersionId": "k97e44yep6vpwb0gmb5r15v79d8fwge1",
+          "ownerPublisherId": "s17db1sjz5ejhj4eabge460gjx8ek15w",
+          "ownerUserId": "kn75a0dxs3v4k8mfv29m15fsq98ejrq4",
+          "slug": "pdf-perevod",
+          "stats": {
+            "comments": 0,
+            "downloads": 369,
+            "installs": 0,
+            "stars": 0,
+            "versions": 5
+          },
+          "summary": "Перевод PDF на русский с сохранением исходной вёрстки, графиков и оформления: английский текст заменяется русским прямо на странице. Читает и сканы (встроенный OCR без сети) — на них перевод рисуется поверх картинки.",
+          "tags": {
+            "latest": "k97e44yep6vpwb0gmb5r15v79d8fwge1"
+          },
+          "topics": [
+            "translation",
+            "russian",
+            "ocr",
+            "layout"
+          ],
+          "updatedAt": 1791458552734
+        },
+        "version": null
+      },
+      "official": false,
+      "ownerHandle": "iirtegova",
+      "publisher": {
+        "displayName": "iirtegova",
+        "handle": "iirtegova",
+        "image": "https://avatars.githubusercontent.com/u/93735389?v=4",
+        "kind": "user",
+        "official": false
+      },
+      "score": 6110,
+      "slug": "pdf-perevod",
+      "source": "clawhub",
+      "sourceIdentity": {
+        "host": null,
+        "id": "kd7d3zf36dge8306918hjfyj5x8etmmw",
+        "lifetimeInstalls": null,
+        "owner": "iirtegova",
+        "repo": null
+      },
+      "summary": "Перевод PDF на русский с сохранением исходной вёрстки, графиков и оформления: английский текст заменяется русским прямо на странице. Читает и сканы (встроенный OCR без сети) — на них перевод рисуется поверх картинки.",
+      "trust": {
+        "clawHubVerdict": null,
+        "installability": "installable",
+        "sourceFreshness": "native",
+        "upstreamScanners": null,
+        "visibility": "public"
+      },
+      "updatedAt": 1791458552734,
+      "version": null,
+      "owner": {
+        "handle": "iirtegova",
+        "displayName": "iirtegova",
+        "image": "https://avatars.githubusercontent.com/u/93735389?v=4"
+      }
+    },
+    {
+      "canonicalUrl": "/skills-sh/nexu-io/open-design/pdf",
+      "displayName": "pdf",
+      "downloads": 2817,
+      "featured": false,
+      "icon": null,
+      "id": "skills-sh:nexu-io/open-design/pdf",
+      "install": {
+        "kind": "skills-sh",
+        "reference": "skills-sh:nexu-io/open-design/pdf",
+        "sourceUrl": "https://www.skills.sh/nexu-io/open-design/pdf"
+      },
+      "links": {
+        "canonical": "/skills-sh/nexu-io/open-design/pdf",
+        "source": "https://www.skills.sh/nexu-io/open-design/pdf"
+      },
+      "metrics": {
+        "bookmarks": null,
+        "rolling60DayInstalls": null,
+        "updatedAt": 1791225248583
+      },
+      "native": null,
+      "official": false,
+      "ownerHandle": "nexu-io",
+      "publisher": null,
+      "score": 6110,
+      "slug": "pdf",
+      "source": "skills-sh",
+      "sourceIdentity": {
+        "host": null,
+        "id": "nexu-io/open-design/pdf",
+        "lifetimeInstalls": 2817,
+        "owner": "nexu-io",
+        "repo": "open-design"
+      },
+      "summary": "# pdf > Curated from Anthropic's official skills repository. ## What it does Extract text, create PDFs, and handle forms. Useful for press releases, branded one-pagers, and printable design deliverables. ## Source - Upstream: https://github.com/anthropics/skills/tree/main/skills/pdf - Category: `documents` ## How to use This catalogue entry advertises the skill in OpenDesign so the agent discovers it during planning. To run the full upstream workflow with its original assets, scripts, and references, instal",
+      "trust": {
+        "clawHubVerdict": null,
+        "installability": "installable",
+        "sourceFreshness": "observed-only",
+        "upstreamScanners": {
+          "genAgentTrustHub": {
+            "sourceCheckedAt": "2026-08-19T04:58:19.732Z",
+            "sourceUrl": "https://www.skills.sh/nexu-io/open-design/pdf/security/agent-trust-hub",
+            "status": "pass"
+          },
+          "snyk": {
+            "sourceCheckedAt": "2026-08-19T04:58:11.586721+00:00",
+            "sourceUrl": "https://www.skills.sh/nexu-io/open-design/pdf/security/snyk",
+            "status": "pass"
+          },
+          "socket": {
+            "sourceCheckedAt": "2026-08-19T04:59:10.703Z",
+            "sourceUrl": "https://www.skills.sh/nexu-io/open-design/pdf/security/socket",
+            "status": "pass"
+          }
+        },
+        "visibility": "public"
+      },
+      "updatedAt": 1791225248583,
+      "version": null
+    },
+    {
+      "canonicalUrl": "/skills-sh/anthropics/skills/pdf",
+      "displayName": "pdf",
+      "downloads": 206521,
+      "featured": false,
+      "icon": null,
+      "id": "skills-sh:anthropics/skills/pdf",
+      "install": {
+        "kind": "skills-sh",
+        "reference": "skills-sh:anthropics/skills/pdf",
+        "sourceUrl": "https://www.skills.sh/anthropics/skills/pdf"
+      },
+      "links": {
+        "canonical": "/skills-sh/anthropics/skills/pdf",
+        "source": "https://www.skills.sh/anthropics/skills/pdf"
+      },
+      "metrics": {
+        "bookmarks": null,
+        "rolling60DayInstalls": null,
+        "updatedAt": 1791223112941
+      },
+      "native": null,
+      "official": false,
+      "ownerHandle": "anthropics",
+      "publisher": null,
+      "score": 6110,
+      "slug": "pdf",
+      "source": "skills-sh",
+      "sourceIdentity": {
+        "host": null,
+        "id": "anthropics/skills/pdf",
+        "lifetimeInstalls": 206521,
+        "owner": "anthropics",
+        "repo": "skills"
+      },
+      "summary": "# PDF Processing Guide ## Overview This guide covers essential PDF processing operations using Python libraries and command-line tools. For advanced features, JavaScript libraries, and detailed examples, see REFERENCE.md. If you need to fill out a PDF form, read FORMS.md and follow its instructions. ## Quick Start ```python from pypdf import PdfReader, PdfWriter # Read a PDF reader = PdfReader(\"document.pdf\") print(f\"Pages: {len(reader.pages)}\") # Extract text text = \"\" for page in reader.pages: text += pag",
+      "trust": {
+        "clawHubVerdict": null,
+        "installability": "installable",
+        "sourceFreshness": "observed-only",
+        "upstreamScanners": {
+          "genAgentTrustHub": {
+            "sourceCheckedAt": "2026-09-15T12:21:41.621Z",
+            "sourceUrl": "https://www.skills.sh/anthropics/skills/pdf/security/agent-trust-hub",
+            "status": "pass"
+          },
+          "snyk": {
+            "sourceCheckedAt": "2026-09-15T12:20:57.824067+00:00",
+            "sourceUrl": "https://www.skills.sh/anthropics/skills/pdf/security/snyk",
+            "status": "warn"
+          },
+          "socket": {
+            "sourceCheckedAt": "2026-09-15T12:21:30.416Z",
+            "sourceUrl": "https://www.skills.sh/anthropics/skills/pdf/security/socket",
+            "status": "pass"
+          }
+        },
+        "visibility": "public"
+      },
+      "updatedAt": 1791223112941,
+      "version": null
+    }
+  ]
+}

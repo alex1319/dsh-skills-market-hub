@@ -1,0 +1,14 @@
+# dsh-skills-market-hub bundle patch: contributes this plugin's own row into the
+# host composition when the package is installed via `dsh plugin add`.
+#
+# The plugin is HOST-PLANE: it serves an HTTP API over a webServer route and
+# installs skills into the DSH user skills directory, and its client half
+# registers a sidebar panel plus the panel it opens. It must therefore land in
+# the host composition (this insert), never inside an agent preset.
+#
+# This layer only inserts: it replaces no official DSH component, so the profile
+# keeps every bundle it already had.
+
+- insert:
+    - id: skills-market-hub
+      name: 'dsh-skills-market-hub'

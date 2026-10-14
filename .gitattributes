@@ -1,0 +1,14 @@
+# Normalize line endings on checkout by platform, but always store LF in the
+# repository. Without this, a Windows checkout rewrites every source file and
+# the resulting diff noise buries real changes — and the frontmatter fixtures
+# in particular are compared byte-for-byte by their tests.
+* text=auto eol=lf
+
+# Binary fixtures must never be normalized.
+*.png binary
+*.ico binary
+*.tgz binary
+
+# Generated, committed on purpose (see README): a Git install does not run a
+# build, so `lib/` has to be present in the repository.
+lib/** linguist-generated=true

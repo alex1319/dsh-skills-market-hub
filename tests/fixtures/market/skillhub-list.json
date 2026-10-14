@@ -1,0 +1,163 @@
+{
+  "code": 0,
+  "data": {
+    "skills": [
+      {
+        "category": "design-media",
+        "claim_state": "unclaimed",
+        "claimable": false,
+        "claimed_user_handle": null,
+        "created_at": 1786193993961,
+        "description": "Apple 官网设计风格完整指南——配色（黑白灰+高饱和点缀）、 排版（SF Pro Display/Text，超大字重标题）、布局（垂直卡片流+粘性滚动）、 交互（渐进式动画+视差滚动）、影像（3D 产品渲染+极简场景）、 文案（短句+留白呼吸）。内置页面生成器（输入产品信息一键产出 Apple 风格 HTML）和风格检查器（给现有页面打分）。v1.2 新增 3 个可直接打开的示例页（examples/）、增强版生成模板（规格参数表+ 滚动渐显+小屏适配）、38 项脚本测试。适用于复制 Apple 风格的页面设计、 PPT 排版、品牌视觉策划。当用户提到「Apple 风格」「苹果设计」 「极简科技感」「Keynote 风格」时触发。",
+        "description_zh": "Apple 官网设计风格完整指南——配色（黑白灰+高饱和点缀）、 排版（SF Pro Display/Text，超大字重标题）、布局（垂直卡片流+粘性滚动）、 交互（渐进式动画+视差滚动）、影像（3D 产品渲染+极简场景）、 文案（短句+留白呼吸）。内置页面生成器（输入产品信息一键产出 Apple 风格 HTML）和风格检查器（给现有页面打分）。v1.2 新增 3 个可直接打开的示例页（examples/）、增强版生成模板（规格参数表+ 滚动渐显+小屏适配）、38 项脚本测试。适用于复制 Apple 风格的页面设计、 PPT 排版、品牌视觉策划。当用户提到「Apple 风格」「苹果设计」 「极简科技感」「Keynote 风格」时触发。",
+        "downloads": 429,
+        "homepage": "https://api.skillhub.cn/user_2af611f4/apple-design-style",
+        "iconUrl": null,
+        "installs": 0,
+        "isServiceized": false,
+        "labels": {
+          "requires_api_key": "false"
+        },
+        "last_synced_at": null,
+        "name": "Apple 设计风格——极致简约的人文科技",
+        "namespace": {
+          "canonicalName": "@user_2af611f4/apple-design-style",
+          "displayName": "user_2af611f4",
+          "handle": "user_2af611f4",
+          "publicSlug": "apple-design-style"
+        },
+        "ownerName": "user_2af611f4",
+        "score": 100000,
+        "slug": "apple-design-style",
+        "source": "community",
+        "stars": 0,
+        "subCategories": [
+          {
+            "key": "design-poster",
+            "name": "海报设计"
+          },
+          {
+            "key": "design-visual-asset",
+            "name": "视觉素材"
+          }
+        ],
+        "tags": [
+          "apple",
+          "brand-style",
+          "design",
+          "examples",
+          "minimalism",
+          "tested",
+          "typography"
+        ],
+        "updated_at": 1791975642258,
+        "upstream_owner_login": null,
+        "upstream_url": null,
+        "verified": false,
+        "version": "1.2.0"
+      },
+      {
+        "category": "knowledge-management",
+        "claim_state": "unclaimed",
+        "claimable": false,
+        "claimed_user_handle": null,
+        "created_at": 1791357202512,
+        "description": "给园林苗木、植保、农业类文档批量打国家禁用与限用农药标记，也可直接查询某种药的合规状态。核心解决两个问题：老资料里的商品名（速扑杀、退菌特、米乐尔等）扫不到，以及「氧化乐果」被短名「乐果」误标成限用。适用于资料入库前、课件整理、防治方案发布前，以及\"这药还能不能用\"的日常查询。",
+        "description_zh": "给园林苗木、植保、农业类文档批量打国家禁用与限用农药标记，也可直接查询某种药的合规状态。核心解决两个问题：老资料里的商品名（速扑杀、退菌特、米乐尔等）扫不到，以及「氧化乐果」被短名「乐果」误标成限用。适用于资料入库前、课件整理、防治方案发布前，以及\"这药还能不能用\"的日常查询。",
+        "downloads": 29,
+        "homepage": "https://api.skillhub.cn/user_168fc0fe/pesticide-ban-check",
+        "iconUrl": "https://cloudcache.tencent-cloud.com/qcloud/ui/static/other_external_resource/0c9b068f-f22e-44e2-96fe-d2b6f5b43b07.png",
+        "installs": 0,
+        "isServiceized": false,
+        "labels": {
+          "requires_api_key": "false"
+        },
+        "last_synced_at": null,
+        "name": "农药禁限用合规助手",
+        "namespace": {
+          "canonicalName": "@user_168fc0fe/pesticide-ban-check",
+          "displayName": "user_168fc0fe",
+          "handle": "user_168fc0fe",
+          "publicSlug": "pesticide-ban-check"
+        },
+        "ownerName": "user_168fc0fe",
+        "score": 11421.911421911422,
+        "slug": "pesticide-ban-check",
+        "source": "community",
+        "stars": 1,
+        "subCategories": [
+          {
+            "key": "knowledge-retrieval",
+            "name": "信息检索"
+          },
+          {
+            "key": "knowledge-archive",
+            "name": "知识归档"
+          },
+          {
+            "key": "knowledge-doc-qa",
+            "name": "文档问答"
+          }
+        ],
+        "tags": null,
+        "updated_at": 1791975637245,
+        "upstream_owner_login": null,
+        "upstream_url": null,
+        "verified": false,
+        "version": "1.0.0"
+      },
+      {
+        "category": "knowledge-management",
+        "claim_state": "unclaimed",
+        "claimable": false,
+        "claimed_user_handle": null,
+        "created_at": 1787416921022,
+        "description": "将长辈口述、录音、日记、家书、照片说明采集并整理成家人可翻阅的回忆录（人生之书）。适用：给父母或祖辈留书、从零做口述访谈、上传录音转写、把已有手稿整理成书且不能编造。典型说法：「给爷爷写一本人生之书」「这段录音帮我转成文字再成书」「这些日记想做成给家里看的书」。不要用于：个人IP或起号故事、虚构小说、简单排版、与逝者聊天或声音克隆、家谱权利裁定、医疗诊断。",
+        "description_zh": "将长辈口述、录音、日记、家书、照片说明采集并整理成家人可翻阅的回忆录（人生之书）。适用：给父母或祖辈留书、从零做口述访谈、上传录音转写、把已有手稿整理成书且不能编造。典型说法：「给爷爷写一本人生之书」「这段录音帮我转成文字再成书」「这些日记想做成给家里看的书」。不要用于：个人IP或起号故事、虚构小说、简单排版、与逝者聊天或声音克隆、家谱权利裁定、医疗诊断。",
+        "downloads": 71,
+        "homepage": "https://api.skillhub.cn/user_cae83fba/life-book",
+        "iconUrl": "https://cloudcache.tencent-cloud.com/qcloud/ui/static/other_external_resource/a00e31c7-8d6a-4e65-84fc-16a177f95674.png",
+        "installs": 0,
+        "isServiceized": false,
+        "labels": {
+          "requires_api_key": "false"
+        },
+        "last_synced_at": null,
+        "name": "人生之书",
+        "namespace": {
+          "canonicalName": "@user_cae83fba/life-book",
+          "displayName": "user_cae83fba",
+          "handle": "user_cae83fba",
+          "publicSlug": "life-book"
+        },
+        "ownerName": "user_cae83fba",
+        "score": 21212.121212121212,
+        "slug": "life-book",
+        "source": "community",
+        "stars": 1,
+        "subCategories": [
+          {
+            "key": "knowledge-organize",
+            "name": "资料整理"
+          },
+          {
+            "key": "knowledge-notes",
+            "name": "笔记整理"
+          },
+          {
+            "key": "knowledge-archive",
+            "name": "知识归档"
+          }
+        ],
+        "tags": null,
+        "updated_at": 1791975632363,
+        "upstream_owner_login": null,
+        "upstream_url": null,
+        "verified": false,
+        "version": "1.1.0"
+      }
+    ],
+    "total": 194720
+  },
+  "message": "success"
+}

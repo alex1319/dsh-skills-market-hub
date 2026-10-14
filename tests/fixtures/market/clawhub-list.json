@@ -1,0 +1,103 @@
+{
+  "items": [
+    {
+      "ownerHandle": "pskoett",
+      "slug": "self-improving-agent",
+      "displayName": "self-improving agent",
+      "summary": "Captures and maintains learnings, errors, and corrections. Use when a command fails, the user corrects an assumption, a capability is missing, knowledge is outdated, or a better approach is found. Review relevant saved guidance before major tasks, reuse, and promotion; revalidate it according to wha",
+      "description": null,
+      "topics": [
+        "self-improvement",
+        "context"
+      ],
+      "tags": {
+        "latest": "4.0.3"
+      },
+      "stats": {
+        "comments": 53,
+        "downloads": 484717,
+        "installs": 18487,
+        "stars": 3998,
+        "versions": 40
+      },
+      "createdAt": 1767632598365,
+      "updatedAt": 1791098661833,
+      "latestVersion": {
+        "version": "4.0.3",
+        "createdAt": 1791095591470,
+        "changelog": "### Changelog for self-improving-agent v4.0.3\n\n## Added\n- Cause-aware maintenance for saved knowledge, including one-off and unpromoted learnings.\n- Four decay types determine how to revalidate: reality, decision, dependency, and relevance.\n- Qualitative review rates—fast, medium, slow, and durable—determine when to check. Relevant changes override cadence.\n- Lightweight maintenance metadata records each claim’s scope, authority, review triggers, and actual dated evidence.",
+        "license": "MIT-0"
+      },
+      "metadata": null
+    },
+    {
+      "ownerHandle": "spclaudehome",
+      "slug": "skill-vetter",
+      "displayName": "Skill Vetter",
+      "summary": "Security-first skill vetting for AI agents. Use before installing any skill from ClawdHub, GitHub, or other sources. Checks for red flags, permission scope, and suspicious patterns.",
+      "description": null,
+      "topics": [
+        "GitHub",
+        "Permission"
+      ],
+      "tags": {
+        "latest": "1.0.0"
+      },
+      "stats": {
+        "comments": 0,
+        "downloads": 277112,
+        "installs": 12246,
+        "stars": 1304,
+        "versions": 1
+      },
+      "createdAt": 1769863429632,
+      "updatedAt": 1789594554485,
+      "latestVersion": {
+        "version": "1.0.0",
+        "createdAt": 1769863429632,
+        "changelog": "Initial release - Security-first skill vetting for AI agents",
+        "license": null
+      },
+      "metadata": null
+    },
+    {
+      "ownerHandle": "ivangdavila",
+      "slug": "self-improving",
+      "displayName": "Self-Improving + Proactive Agent",
+      "summary": "Self-reflection + Self-criticism + Self-learning + Self-organizing memory. Agent evaluates its own work, catches mistakes, and improves permanently. Use when...",
+      "description": null,
+      "topics": [
+        "Self Improving",
+        "Learning"
+      ],
+      "tags": {
+        "latest": "1.2.16"
+      },
+      "stats": {
+        "comments": 0,
+        "downloads": 211400,
+        "installs": 7389,
+        "stars": 1295,
+        "versions": 22
+      },
+      "createdAt": 1771266418607,
+      "updatedAt": 1778491556797,
+      "latestVersion": {
+        "version": "1.2.16",
+        "createdAt": 1773329327755,
+        "changelog": "Clarifies the setup flow for proactive follow-through and safer installation behavior.",
+        "license": "MIT-0"
+      },
+      "metadata": {
+        "setup": [],
+        "os": [
+          "linux",
+          "darwin",
+          "win32"
+        ],
+        "systems": null
+      }
+    }
+  ],
+  "nextCursor": "{\"v\":1,\"index\":\"by_active_stats_downloads\",\"key\":[{\"__undef\":1},211400,1778491556797,1773255917793.7744,\"r1774whtkkgc7rm5ykeen9k5y582p0w6\"]}"
+}

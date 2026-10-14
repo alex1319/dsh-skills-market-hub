@@ -1,0 +1,5 @@
+# pnpm 11 requires an explicit decision before a dependency's install script may
+# run. esbuild's install step only materializes its platform binary; nothing else
+# in this tree has a build script.
+allowBuilds:
+  esbuild: true

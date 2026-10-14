@@ -1,0 +1,101 @@
+{
+  "count": 19,
+  "files": [
+    {
+      "path": "faq.md",
+      "sha256": "ef8484798f4afda56ab2f874a9daccc0103eeeebd53ee6308d7c4aa7387716d7",
+      "size": 6933
+    },
+    {
+      "path": "README.md",
+      "sha256": "50d6b48f6e5617b676207068bf0c668ad63e5ef4d0fc7516d04b5051434e424a",
+      "size": 5380
+    },
+    {
+      "path": "references/brainstorming-flow.md",
+      "sha256": "4626d5582712e0251beda85bcb4504e4c5f0c734932b96f99d5e97e92565911f",
+      "size": 5721
+    },
+    {
+      "path": "references/emergency-sop.md",
+      "sha256": "22e9d6ca227e9bd1b43b53c71a7687be68ac20ad43d18860ce6621c96aff7d4d",
+      "size": 3165
+    },
+    {
+      "path": "references/family-support.md",
+      "sha256": "078cb6f52ff47ddd1551bbc67e84144ae2c651ce4e54916b07c70b861b05f158",
+      "size": 4694
+    },
+    {
+      "path": "references/golden-cases.md",
+      "sha256": "a84ca6531ebeaea063dead785e2bd2384acdcafb266fe96be6dafdaa6fe5373f",
+      "size": 20788
+    },
+    {
+      "path": "references/hallucination-guard.md",
+      "sha256": "f9515d45af3c0baa0af82b805dfce98c4ab1c9e9132015dac06ae0657ad99728",
+      "size": 3964
+    },
+    {
+      "path": "references/reasoning-chain.md",
+      "sha256": "64e0d7870e74032eee7d5f73cd17fb63be8008dd0c9e9f1c70a646124d4d768a",
+      "size": 8335
+    },
+    {
+      "path": "references/response-scripts.md",
+      "sha256": "581adec76f1c7c5693ae34234bfbdf6cc6c36813cced57850d2c78149f61797d",
+      "size": 2667
+    },
+    {
+      "path": "references/risk-levels.md",
+      "sha256": "3bf946cc42a3b304a940fc4ebac31f61650f4d6c1c580ceaf66f40960e337043",
+      "size": 11720
+    },
+    {
+      "path": "references/scam-knowledge.md",
+      "sha256": "0d80af5c7ce020f5098fac4609956447a54ee64060ca7a07290b4d2a340542d7",
+      "size": 42820
+    },
+    {
+      "path": "references/verification-chain.md",
+      "sha256": "e7171dc3746e8d0d99998a03d37e2ad1957292be9a466a987e77f43eb988b4f5",
+      "size": 7396
+    },
+    {
+      "path": "references/walkthrough-examples.md",
+      "sha256": "e2eb1f6bff12fd51c04609913d0d6bbfc6bf4283850e72bb42ccfd8cce5d38d1",
+      "size": 33183
+    },
+    {
+      "path": "SKILL.md",
+      "sha256": "7a382ec62186d4f69e714b2343d3bfbad7c19cc280190e37341a81e103a792ab",
+      "size": 17538
+    },
+    {
+      "path": "workflows/agents/security/evaluator.md",
+      "sha256": "aad4e87e1a9b3b8ea20996c253b32ed4bb5954091260c2c3a855d87477b0e375",
+      "size": 656
+    },
+    {
+      "path": "workflows/agents/security/fraudster.md",
+      "sha256": "95f3f9e7010f07e031bba841af48ccabccb90e81e1a566234e8fd2e0873b2734",
+      "size": 1958
+    },
+    {
+      "path": "workflows/agents/security/mentor.md",
+      "sha256": "907aedb783d451bb4423ee5ef36fe7342aafa0a87b88841fa9193440a69e615f",
+      "size": 788
+    },
+    {
+      "path": "workflows/agents/user.md",
+      "sha256": "6996d03b5d8f3bc3eb807c8fb67016ee212b2777dd6ca6bc5b437547faa7f0bc",
+      "size": 554
+    },
+    {
+      "path": "workflows/anti-fraud-drill.yaml",
+      "sha256": "a831beb50a06fa393d3000a45c8e8987b4fe2c2789e9f3ee1ca31923cb0216e4",
+      "size": 4995
+    }
+  ],
+  "version": "1.0.11"
+}

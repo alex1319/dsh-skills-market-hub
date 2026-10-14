@@ -1,0 +1,155 @@
+{
+  "code": 0,
+  "data": {
+    "skills": [
+      {
+        "category": "knowledge-management",
+        "claim_state": "unclaimed",
+        "claimable": false,
+        "claimed_user_handle": null,
+        "created_at": 1782476055837,
+        "description": "将原始素材（日记、笔记、书信、照片说明等）进行整理、标注和角度转换，输出忠实于原始材料、能照见平凡中不平凡之处的自传/回忆录。\n\n适用场景（触发）：\n- 用户说\"帮我整理自传\"、\"整理我父亲/母亲的人生经历\"\n- 用户上传 .docx/.txt 文件，要求\"整理口述历史\"、\"把我的笔记整理成自传\"\n- 用户说\"我想把家族历史写出来\"\n- 触发不依赖精确关键词——任何表达\"整理人生材料\"意图的话都能触发\n\n触发示例（不限于这些说法）：\n- \"我爸口述了一些经历，帮我整理一下\"\n- \"这些日记想做成一本书\"\n- \"家里有长辈的回忆录手稿，能帮我排版吗\"\n- \"我想把爷爷的故事记录下来\"\n\n不适用场景（不要触发）：\n- 纯虚构写作、小说创作（这不是创意写作 Skill）\n- 简单文档格式转换（用 docx Skill）\n- 纯文字润色（无自传/回忆录结构需求）\n\n核心能力：逐段提取 → 来源标注 → 角度转换提炼闪光点 → 按章节组织 → 图片对应嵌入 → 多格式导出",
+        "description_zh": "把日记、笔记、书信、口述历史等原始素材，整理成忠实原文、出处可追溯、能照见平凡中不平凡的自传或回忆录。\n\n核心原则：只整理，不杜撰。每段必有出处标注，闪光点靠\"角度转换\"（补充可验证的历史背景让普通细节显出不平凡），而非凭空创作心理描写或场景渲染。\n\n输出含来源标注、图片嵌入、杜撰检查清单，支持 Markdown/DOCX/PDF 多格式导出。",
+        "downloads": 525,
+        "homepage": "https://api.skillhub.cn/user_00c9b356/autobiographyreconstructor",
+        "iconUrl": "https://cloudcache.tencent-cloud.com/qcloud/ui/static/other_external_resource/a00e31c7-8d6a-4e65-84fc-16a177f95674.png",
+        "installs": 0,
+        "isServiceized": false,
+        "labels": {
+          "requires_api_key": "false"
+        },
+        "last_synced_at": null,
+        "name": "自传材料整理师",
+        "namespace": {
+          "canonicalName": "@user_00c9b356/autobiographyreconstructor",
+          "displayName": "user_00c9b356",
+          "handle": "user_00c9b356",
+          "publicSlug": "autobiographyreconstructor"
+        },
+        "ownerName": "user_00c9b356",
+        "score": 17498.624105668685,
+        "slug": "autobiographyreconstructor",
+        "source": "community",
+        "stars": 1,
+        "subCategories": [
+          {
+            "key": "knowledge-organize",
+            "name": "资料整理"
+          },
+          {
+            "key": "knowledge-archive",
+            "name": "知识归档"
+          },
+          {
+            "key": "knowledge-doc-qa",
+            "name": "文档问答"
+          }
+        ],
+        "tags": null,
+        "updated_at": 1791975602932,
+        "upstream_owner_login": null,
+        "upstream_url": null,
+        "verified": false,
+        "version": "2.1.0"
+      },
+      {
+        "category": "education",
+        "claim_state": "unclaimed",
+        "claimable": false,
+        "claimed_user_handle": null,
+        "created_at": 1787975567883,
+        "description": "宝厂应试背诵规划助手（由抓马扣叔与宝厂开发）。触发条件：用户上传背诵材料文件（文档/PDF/图片/表格）或粘贴清单内容，并要求进行背诵/复习规划时使用；也适用于学生或考生需要为背诵任务（古诗文、课文、英语单词、政治大题、法条、名词解释等）制定带复习安排和提醒的背诵计划。流程：用户上传背诵材料或知识清单后，说明当前背诵进度（哪些已背完、哪些进行中，进度会融入排程），选择间隔记忆方式（艾宾浩斯记忆法、莱特纳系统、Pimsleur渐进式间隔回忆法、渐进阅读、连续再学习），填写背诵周期、一轮完成目标日（考研建议十一月初）、每日背诵时间、周末是否减量、是否还有其他背诵任务需要平衡（有则同样可邀请上传文件或清单），最终生成负载均衡优化的每日背诵计划表，并标注第一轮、第二轮全部背完的日期。触发词：上传材料做背诵计划、根据清单排背诵计划、背诵计划、背诵规划、记忆计划、间隔记忆、艾宾浩斯、莱特纳、Pimsleur、渐进阅读、连续再学习、背诵规划表、背单词计划表、复习计划表、应试背诵。",
+        "description_zh": "宝厂应试背诵规划助手（由抓马扣叔与宝厂开发）。\n\n触发条件：用户上传背诵材料文件（文档/PDF/图片/表格）或粘贴清单内容，并要求进行背诵/复习规划时使用；也适用于学生或考生需要为背诵任务（古诗文、课文、英语单词、政治大题、法条、名词解释等）制定带复习安排和提醒的背诵计划。\n\n流程：用户上传背诵材料或知识清单后，选择间隔记忆方式（艾宾浩斯记忆法、莱特纳系统、Pimsleur渐进式间隔回忆法、渐进阅读、连续再学习），填写背诵周期、每日背诵时间、周末是否减量、是否还有其他背诵任务需要平衡（有则同样可邀请上传文件或清单），最终生成负载均衡优化的每日背诵计划表，并标注第一轮、第二轮全部背完的日期。\n\n触发词：上传材料做背诵计划、根据清单排背诵计划、背诵计划、背诵规划、记忆计划、间隔记忆、艾宾浩斯、莱特纳、Pimsleur、渐进阅读、连续再学习、背诵规划表、背单词计划表、复习计划表、应试背诵。",
+        "downloads": 1777,
+        "homepage": "https://api.skillhub.cn/user_4b916a4a/baochang-recitation-planner",
+        "iconUrl": "https://skillhub-1388575217.cos.accelerate.myqcloud.com/skill-icons/uploads/636019/cb7a86c5162a41dd962d64c810463b84.png",
+        "installs": 0,
+        "isServiceized": false,
+        "labels": {
+          "requires_api_key": "false"
+        },
+        "last_synced_at": null,
+        "name": "宝厂应试背诵规划助手",
+        "namespace": {
+          "canonicalName": "@user_4b916a4a/baochang-recitation-planner",
+          "displayName": "user_4b916a4a",
+          "handle": "user_4b916a4a",
+          "publicSlug": "baochang-recitation-planner"
+        },
+        "ownerName": "user_4b916a4a",
+        "score": 35000,
+        "slug": "baochang-recitation-planner",
+        "source": "community",
+        "stars": 2,
+        "subCategories": [
+          {
+            "key": "edu-tutoring",
+            "name": "学习辅导"
+          },
+          {
+            "key": "edu-exam-prep",
+            "name": "考试备考"
+          }
+        ],
+        "tags": null,
+        "updated_at": 1791975480109,
+        "upstream_owner_login": null,
+        "upstream_url": null,
+        "verified": false,
+        "version": "1.0.2"
+      },
+      {
+        "category": "office-efficiency",
+        "claim_state": "unclaimed",
+        "claimable": false,
+        "claimed_user_handle": null,
+        "created_at": 1787131292348,
+        "description": "专业级文档解析与格式转换引擎。支持 PDF/Word/Excel/PPT/扫描件的高精度结构化提取，自动清洗噪声，智能处理合并单元格；同时支持多种格式互转：Word/Excel/PPT/图片/Markdown 转 PDF，PDF 转 Word/Excel/Markdown。Word/Excel/PPT 转 PDF 优先调用真实 Office 渲染引擎（LibreOffice/MS Word/WPS）做保真转换，完整保留图片、表格与原始版式。当用户需要解析文档、提取表格、OCR识别、格式转换、Word转PDF、PDF转Word、Excel转PDF、PDF转Excel、图片转PDF、批量处理文件时使用此技能。",
+        "description_zh": "专业级文档解析与格式转换引擎。支持 PDF/Word/Excel/PPT/扫描件的高精度结构化提取，自动清洗噪声，智能处理合并单元格；同时支持多种格式互转：Word/Excel/PPT/图片/Markdown 转 PDF，PDF 转 Word/Excel/Markdown。Word/Excel/PPT 转 PDF 优先调用真实 Office 渲染引擎（LibreOffice/MS Word/WPS）做保真转换，完整保留图片、表格与原始版式。当用户需要解析文档、提取表格、OCR识别、格式转换、Word转PDF、PDF转Word、Excel转PDF、PDF转Excel、图片转PDF、批量处理文件时使用此技能。",
+        "downloads": 851,
+        "homepage": "https://api.skillhub.cn/user_0b8c2f1b/complex-doc-parser2026",
+        "iconUrl": "https://cloudcache.tencent-cloud.com/qcloud/ui/static/other_external_resource/a4e49550-e527-4406-b761-c4f2e607b757.png",
+        "installs": 0,
+        "isServiceized": false,
+        "labels": {
+          "requires_api_key": "false"
+        },
+        "last_synced_at": null,
+        "name": "多模态文档无损解析助手",
+        "namespace": {
+          "canonicalName": "@user_0b8c2f1b/complex-doc-parser2026",
+          "displayName": "user_0b8c2f1b",
+          "handle": "user_0b8c2f1b",
+          "publicSlug": "complex-doc-parser2026"
+        },
+        "ownerName": "user_0b8c2f1b",
+        "score": 21984.03962575674,
+        "slug": "complex-doc-parser2026",
+        "source": "community",
+        "stars": 1,
+        "subCategories": [
+          {
+            "key": "office-doc",
+            "name": "文档处理"
+          },
+          {
+            "key": "office-pdf",
+            "name": "PDF 处理"
+          },
+          {
+            "key": "office-automation",
+            "name": "流程自动化"
+          }
+        ],
+        "tags": null,
+        "updated_at": 1791975480015,
+        "upstream_owner_login": null,
+        "upstream_url": null,
+        "verified": false,
+        "version": "1.0.0"
+      }
+    ],
+    "total": 4422
+  },
+  "message": "success"
+}

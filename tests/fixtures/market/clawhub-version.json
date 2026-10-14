@@ -1,0 +1,33 @@
+{
+  "skill": {
+    "slug": "self-improving-agent",
+    "displayName": "self-improving agent"
+  },
+  "version": {
+    "version": "1.0.0",
+    "createdAt": 1767632598365,
+    "changelog": "",
+    "changelogSource": null,
+    "license": null,
+    "files": [
+      {
+        "path": "SKILL.md",
+        "size": 9047,
+        "sha256": "cc2f9aa78b5f48e4b41965be5cbe00322a29bcecb2166b022ce3d5d2e5964e45",
+        "contentType": "text/markdown"
+      },
+      {
+        "path": "examples.md",
+        "size": 5783,
+        "sha256": "26b96a5b068543898ab5494d6e4671cc28eb008a96bed4742fea594715060b70",
+        "contentType": "text/markdown"
+      },
+      {
+        "path": "LEARNINGS.md",
+        "size": 295,
+        "sha256": "f7f62b2c6ed4a021323b6c512da3499fc3495b604279aaa21db783fe6279b80e",
+        "contentType": "text/markdown"
+      }
+    ]
+  }
+}
