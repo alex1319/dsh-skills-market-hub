@@ -23,6 +23,19 @@ import { installedLookup } from '../market/market-service.ts';
 import { type MarketFileContent, type MarketFileMeta, type MarketSource, type NormalizedSkill } from '../market/types.ts';
 import { type InstalledSkillRecord } from './installed.ts';
 /**
+ * Attempts and backoff for the one operation a filesystem filter can veto.
+ *
+ * `rename` onto a free name is the atomic publish, and on Windows it is the step
+ * an antivirus scanner, the search indexer, or a cloud-sync agent can refuse with
+ * `EPERM` while it holds a handle on the directory that was just created. That is
+ * a transient veto with a confusing name: the same call succeeds milliseconds
+ * later. Before this loop existed, one such veto failed the whole install *and*
+ * left the staging directory behind, because the cleanup could not remove a
+ * directory that was still held either.
+ */
+export declare const RENAME_ATTEMPTS = 6;
+export declare const RENAME_BACKOFF_MS = 60;
+/**
  * One install/uninstall failure, carrying the HTTP status the route layer reports.
  *
  * The status travels with the error rather than being re-derived from the code,
@@ -50,7 +63,7 @@ export declare const OPERATION_CODES: {
  *
  * The rules are deliberately strict, because this is the one place where an
  * untrusted string becomes a filesystem write: no absolute paths, no backslashes
- * (a Windows path separator that `path.posix` would treat as a filename
+ * (a Windows path separator that `nodePath.posix` would treat as a filename
  * character), no NUL, no `..` after normalization, and no empty or dot segments.
  *
  * The path must also **already be canonical** (`./a`, `a//b`, and `a/./b` are
@@ -64,10 +77,59 @@ export declare function isSafeRelativeFilePath(filePath: string): boolean;
 export declare function sha256Hex(content: string): string;
 /** Drop the in-flight table (tests; a reload must not inherit another instance's locks). */
 export declare function resetInstallLocks(): void;
+/**
+ * Whether this is the filesystem's way of saying "not right now".
+ *
+ * `EPERM` is the one that matters and the one that misleads: on Windows it is what
+ * a scanner holding a handle produces, not an authorization problem. `EBUSY` is
+ * the same story told by a different layer.
+ */
+export declare function isTransientLock(error: unknown): boolean;
+/**
+ * Remove staging directories left behind by earlier attempts.
+ *
+ * A leftover is not just clutter: it is a directory that the attempt which created
+ * it could not delete, which means something on this machine is holding a handle
+ * on it. Reporting that is the difference between a user who can repair their
+ * skills directory and one who watches the same install fail forever with no
+ * explanation.
+ *
+ * @returns the paths that are still there, so the caller can log them.
+ */
+export declare function sweepStagingDirectories(skillsRoot: string, options?: {
+    delay?: (ms: number) => Promise<void>;
+    fs?: PublishFs;
+}): Promise<string[]>;
 export interface InstallOptions {
     skillsRoot: string;
     /** The author the caller pinned, when the registry's slugs are shared. */
     owner?: string;
+    /**
+     * Called with the absolute path of a staging directory that could not be
+     * removed — an earlier attempt's leftover, or this attempt's own.
+     *
+     * The host logs it. It is not an error the caller can act on (the install it
+     * asked for may have succeeded), which is exactly why it must not be silent.
+     */
+    onStuckStaging?: (stagingPath: string) => void;
+    /** Sleep between publish attempts; injectable so a test does not wait for real. */
+    delay?: (ms: number) => Promise<void>;
+    /** The three filesystem calls the publish path makes; see {@link PublishFs}. */
+    fs?: PublishFs;
+}
+/**
+ * The filesystem calls the publish path makes, behind one seam.
+ *
+ * The failures this path has to survive are races — a Windows scanner holding a
+ * handle on a directory that was just created — and a race cannot be arranged on
+ * demand. Two ways to test the response to one: patch `node:fs/promises`
+ * globally, which an ES module namespace refuses, or hand the operation in. This
+ * is the second, and it is also the honest description of what the code needs.
+ */
+export interface PublishFs {
+    rename(from: string, to: string): Promise<void>;
+    rm(target: string): Promise<void>;
+    exists(target: string): Promise<boolean>;
 }
 export interface InstallResult {
     installedPath: string;

@@ -4,7 +4,7 @@
  * These tests write actual files, because the guarantees they check are
  * filesystem guarantees: an atomic publish, a checksum that aborts before
  * anything lands, a deletion that refuses a directory this plugin did not write.
- * A mocked `fs` would assert the calls, not the outcome — and the outcome is the
+ * A mocked `fs` would assert the calls, not the outcome 鈥?and the outcome is the
  * whole point.
  *
  * The registry is stubbed rather than fetched: the byte-level behaviour under
@@ -13,7 +13,7 @@
 
 import { afterEach, beforeEach, describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, readdir, rename, rm, symlink, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -21,12 +21,15 @@ import {
   SkillOperationError,
   installMarketSkill,
   isSafeRelativeFilePath,
+  isTransientLock,
   readInstalledEntryFile,
   readInstalledSkill,
   sha256Hex,
+  sweepStagingDirectories,
   uninstallInstalledEntry,
   uninstallMarketSkill,
   resetInstallLocks,
+  RENAME_ATTEMPTS,
 } from '../lib/skills/install-service.js'
 import {
   INSTALL_META_FILE,
@@ -53,7 +56,7 @@ function stubProvider(overrides = {}) {
   return {
     source: 'clawhub',
     // The default stub stands in for ClawHub, which *does* pin on the owner
-    // argument — that is what makes the pin-mismatch case below a real assertion
+    // argument 鈥?that is what makes the pin-mismatch case below a real assertion
     // rather than a branch nothing reaches.
     pinsOwner: overrides.pinsOwner ?? true,
     async list() { return { items: [] } },
@@ -543,5 +546,198 @@ describe('uninstall by entry key', () => {
       (error) => error.code === 'MARKET_NOT_MANAGED',
     )
     assert.equal(existsSync(join(root, 'handwritten')), true)
+  })
+})
+
+/**
+ * The publish step, when the filesystem says no.
+ *
+ * The failures covered here are races — a Windows scanner holding a handle on a
+ * directory that was just created — and a race cannot be arranged on demand. What
+ * *can* be pinned is the response to one, which is what was wrong: a refused
+ * publish was reported as a generic "publishing the skill failed" even when the
+ * plugin had already classified the cause correctly elsewhere, and the cleanup
+ * that failed immediately afterwards was swallowed with `.catch(() => undefined)`,
+ * leaving an unexplained directory in the user's skills root.
+ *
+ * The seam is `InstallOptions.fs`, not a patched `node:fs/promises`: an ES module
+ * namespace refuses assignment, and reaching around that would test the loader
+ * rather than the code.
+ */
+describe('publish failures', () => {
+  /** A filesystem that behaves, except where the test says otherwise. */
+  function fakeFs(overrides = {}) {
+    return {
+      rename: overrides.rename ?? ((from, to) => rename(from, to)),
+      rm: overrides.rm ?? ((target) => rm(target, { recursive: true, force: true })),
+      exists: overrides.exists ?? (async (target) => existsSync(target)),
+    }
+  }
+
+  /** An `EPERM` shaped the way Node raises one on Windows. */
+  function lockError(syscall, target) {
+    const error = new Error(`EPERM: operation not permitted, ${syscall} '${target}'`)
+    error.code = 'EPERM'
+    error.syscall = syscall
+    return error
+  }
+
+  it('classifies a held handle as retryable, and a real answer as final', () => {
+    // The distinction the whole retry loop rests on. `EPERM` is what a scanner
+    // produces; `ENOENT` is the disk telling the truth, and retrying it would only
+    // make the reader wait for the same answer.
+    for (const code of ['EPERM', 'EACCES', 'EBUSY']) {
+      assert.equal(isTransientLock(Object.assign(new Error(code), { code })), true, code)
+    }
+    for (const code of ['ENOENT', 'ENOTEMPTY', 'EEXIST', 'ENOSPC', 'EROFS']) {
+      assert.equal(isTransientLock(Object.assign(new Error(code), { code })), false, code)
+    }
+    assert.equal(isTransientLock(undefined), false)
+    assert.equal(isTransientLock(new Error('no code')), false)
+  })
+
+  it('retries a refused publish and succeeds, which is what a scanner needs', async () => {
+    let attempts = 0
+    const waited = []
+
+    const result = await installMarketSkill('clawhub', 'demo', {
+      skillsRoot: root,
+      delay: async (ms) => { waited.push(ms) },
+      fs: fakeFs({
+        rename: async (from, to) => {
+          attempts += 1
+          if (attempts < 3) throw lockError('rename', from)
+          return rename(from, to)
+        },
+      }),
+    })
+
+    assert.equal(attempts, 3, 'the third attempt must be the one that lands')
+    assert.equal(await readFile(join(result.installedPath, 'SKILL.md'), 'utf8'), SKILL_MD)
+    // Backoff grows, and the test never spends the real time.
+    assert.deepEqual(waited, [60, 120])
+    assert.deepEqual((await readdir(root)).sort(), ['demo'], 'and no staging directory survives')
+  })
+
+  it('reports an occupied destination as a conflict, not as a disk error', async () => {
+    // The platform difference this exists for: POSIX answers a rename onto a
+    // non-empty directory with `ENOTEMPTY`, Windows with `EPERM`. The old code
+    // only recognised the first, so on Windows a name conflict reached the reader
+    // as the one message that explains nothing.
+    let attempts = 0
+    await mkdir(join(root, 'demo'), { recursive: true })
+
+    await assert.rejects(
+      installMarketSkill('clawhub', 'demo', {
+        skillsRoot: root,
+        delay: async () => undefined,
+        fs: fakeFs({ rename: async (from) => { attempts += 1; throw lockError('rename', from) } }),
+      }),
+      (error) => {
+        assert.equal(error.status, 409)
+        assert.equal(error.code, 'MARKET_NOT_INSTALLABLE')
+        assert.match(error.message, /already occupies/)
+        return true
+      },
+    )
+    // Answered before the publish was even reached: a conflict is not a lock, and
+    // waiting on one would only delay the answer.
+    assert.equal(attempts, 0)
+  })
+
+  it('reports the operating system\u2019s own error instead of a sentence that says nothing', async () => {
+    await assert.rejects(
+      installMarketSkill('clawhub', 'demo', {
+        skillsRoot: root,
+        delay: async () => undefined,
+        fs: fakeFs({ rename: async (from) => { throw lockError('rename', from) } }),
+      }),
+      (error) => {
+        assert.equal(error.status, 500)
+        assert.equal(error.code, 'MARKET_DISK_ERROR')
+        // The three things a reader needs: what the OS said, that it was retried,
+        // and which directory to remove if it stays behind.
+        assert.match(error.message, /EPERM/)
+        assert.match(error.message, new RegExp(`${RENAME_ATTEMPTS} attempts`))
+        assert.match(error.message, /skills-market-hub-install-/)
+        return true
+      },
+    )
+  })
+
+  it('reports a staging directory it could not remove, instead of swallowing it', async () => {
+    const stuck = []
+
+    const result = await installMarketSkill('clawhub', 'demo', {
+      skillsRoot: root,
+      delay: async () => undefined,
+      fs: fakeFs({
+        // Fails only for the staging directory: the shape of "a handle was held on
+        // it at the wrong moment". The install itself succeeds — the rename moved
+        // the staging path away — which is exactly why silence here left a real
+        // skills root with a directory nobody could explain.
+        rm: async (target) => {
+          if (String(target).includes('.skills-market-hub-install-')) throw lockError('rm', target)
+          return rm(target, { recursive: true, force: true })
+        },
+      }),
+      onStuckStaging: (path) => { stuck.push(path) },
+    })
+
+    assert.equal(result.installedPath, join(root, 'demo'))
+    assert.equal(stuck.length, 1)
+    assert.match(stuck[0], /\.skills-market-hub-install-/)
+  })
+
+  it('clears a leftover from an earlier attempt before staging the next one', async () => {
+    // The recovery path a user actually depends on: a directory that outlived the
+    // install which made it must not accumulate, and must not block the next try.
+    const leftover = join(root, '.skills-market-hub-install-orphan')
+    await mkdir(leftover, { recursive: true })
+    await writeFile(join(leftover, 'partial.txt'), 'half a skill', 'utf8')
+
+    const result = await installMarketSkill('clawhub', 'demo', { skillsRoot: root })
+
+    assert.equal(existsSync(leftover), false, 'the orphan must be gone')
+    assert.deepEqual((await readdir(root)).sort(), ['demo'])
+    assert.equal(await readFile(join(result.installedPath, 'SKILL.md'), 'utf8'), SKILL_MD)
+  })
+
+  it('reports an orphan it cannot remove rather than retrying forever', async () => {
+    const leftover = join(root, '.skills-market-hub-install-orphan')
+    await mkdir(leftover, { recursive: true })
+    const stuck = []
+
+    await installMarketSkill('clawhub', 'demo', {
+      skillsRoot: root,
+      delay: async () => undefined,
+      fs: fakeFs({
+        rm: async (target) => {
+          if (String(target).includes('orphan')) throw lockError('rm', target)
+          return rm(target, { recursive: true, force: true })
+        },
+      }),
+      onStuckStaging: (path) => { stuck.push(path) },
+    })
+
+    assert.deepEqual(stuck, [leftover])
+  })
+
+  it('sweeps staging directories without touching a real skill', async () => {
+    await installMarketSkill('clawhub', 'demo', { skillsRoot: root })
+    await mkdir(join(root, '.skills-market-hub-install-a'), { recursive: true })
+    await mkdir(join(root, '.skills-market-hub-install-b'), { recursive: true })
+
+    const stuck = await sweepStagingDirectories(root, { delay: async () => undefined })
+
+    assert.deepEqual(stuck, [])
+    assert.deepEqual((await readdir(root)).sort(), ['demo'])
+  })
+
+  it('answers an absent skills root without inventing a failure', async () => {
+    // Startup runs this before any install, on a machine that may have no skills
+    // root at all. "Nothing to sweep" is not an error.
+    const stuck = await sweepStagingDirectories(join(root, 'does-not-exist'))
+    assert.deepEqual(stuck, [])
   })
 })

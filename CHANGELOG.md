@@ -1,5 +1,45 @@
 # 更新说明
 
+## 0.1.4
+
+**修复：Windows 上安装会间歇性失败，报「publishing the skill failed」，并在技能目录里留下一个删不掉的目录。**
+
+现象来自真实界面：安装 `ppt-generator-skill` 时底部提示只有一句话，没有任何可用信息；而 `~/.dsh/skills` 里多了一个 `.skills-market-hub-install-*`，用 `rd`、`rm`、`chmod` 都删不掉（全部 `EPERM`）。
+
+排查把三件事分开了，它们各自都是缺陷：
+
+**一、`EPERM` 被当成了通用磁盘错误。** 原子发布是一句 `rename`。Windows 上，杀毒、索引器、云同步工具可以在目录刚创建时短暂持有句柄，`rename` 因此返回 `EPERM` —— 这个错误码的名字极具误导性，它不是权限问题，而是"现在不行，等一下可以"。旧的分类表里只有 `ENOTEMPTY`/`EEXIST`/`ENOTDIR`，所以这个最常见的失败原因落进了兜底分支。实测确认了平台差异：
+
+```
+rename 到已存在的非空目录：POSIX → ENOTEMPTY，Windows → EPERM
+```
+
+**二、这个失败根本没有重试。** 一句 `EPERM` 就放弃整个安装，而同样的调用在几十毫秒后就会成功。现在有界重试（6 次，递增退避）。
+
+**三、清理失败被吞掉了，这才是目录留下的原因。** 发布失败后 `finally` 里的清理是 `rm(...).catch(() => undefined)` —— 而当时句柄还握着，`rm` 也会 `EPERM`。失败被静默丢弃，于是技能目录里多了一个没人能解释的目录。现在清理失败会上报，插件启动时也会重试清扫（持有句柄的进程退出后就能删掉，而重启桌面端正是这个时机）。
+
+错误信息也随之改写。原来只有一句 `publishing the skill failed`，现在带上操作系统自己的说法、重试次数、以及要手工删除的目录名：
+
+```
+the operating system refused to publish the skill after 6 attempts
+(EPERM: operation not permitted, rename '…'); a scanner, indexer, or sync tool
+may be holding the directory — retry, and remove .skills-market-hub-install-oGQv8V by hand if it stays behind
+```
+
+另外修掉的：**目标被占用时报错不准**。`assertInstallTargetFree` 用 `catch {}` 吞掉 `lstat` 的**所有**错误并一律当作"目标不存在" —— 包括 `EPERM`。现在区分 `ENOENT`（真的不存在）与其他错误（目录不可读，这不是"空闲"）。
+
+### 关于测试
+
+这一轮有一个测试设计问题值得记录。覆盖这些失败需要一个 `EPERM`，而它是竞态，无法按需制造。第一版测试改的是全局 `node:fs/promises`：
+
+```
+TypeError: Cannot assign to read only property 'rename' of object '[object Module]'
+```
+
+ES 模块命名空间是只读的，绕过它等于在测加载器而不是被测代码。改成显式接缝：`InstallOptions.fs` 收下发布路径真正用到的那三个调用（`rename` / `rm` / `exists`）。生产路径不传，走真实实现；测试传假的。这也顺带把"这段代码到底依赖文件系统的什么"写清楚了。
+
+新增 9 条测试：重试后成功、占用与磁盘错误的分流、被吞掉的清理现在被上报、遗留目录被下一次安装清掉、清扫不碰真实技能、以及一个不存在的技能根不算失败。
+
 ## 0.1.3
 
 **新增：技能的分类标签，以及让两个筛选下拉说明自己在筛什么。**

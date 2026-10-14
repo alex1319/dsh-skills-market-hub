@@ -241,6 +241,7 @@ export function createRoutes(): Map<string, RouteHandler> {
     const result = await installMarketSkill(source, slug, {
       skillsRoot: await context.skillsRoot(),
       ...(owner === undefined ? {} : { owner }),
+      onStuckStaging: context.onStuckStaging,
     })
     // Refresh before answering, so the next list or inventory read is correct.
     await context.rescan().catch(() => undefined)

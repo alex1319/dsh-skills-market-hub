@@ -21,8 +21,11 @@
  */
 
 import { createHash, randomUUID } from 'node:crypto'
-import * as fs from 'node:fs/promises'
-import * as path from 'node:path'
+// Named `nodeFs`/`nodePath` so the local `fs`/`path` identifiers stay free for this
+// module's own values — the publish path takes a filesystem seam, and a global
+// namespace shadowed by accident is a mistake that only surfaces at runtime.
+import * as nodeFs from 'node:fs/promises'
+import * as nodePath from 'node:path'
 import { skillHeadline } from '../market/frontmatter.ts'
 import { getMarketSkillDetail, installedLookup, provider, applyFileLimits } from '../market/market-service.ts'
 import {
@@ -59,6 +62,20 @@ const MAX_FILE_PATH_LENGTH = 512
 const MAX_SKILL_FILE_BYTES = 2 * 1024 * 1024
 
 /**
+ * Attempts and backoff for the one operation a filesystem filter can veto.
+ *
+ * `rename` onto a free name is the atomic publish, and on Windows it is the step
+ * an antivirus scanner, the search indexer, or a cloud-sync agent can refuse with
+ * `EPERM` while it holds a handle on the directory that was just created. That is
+ * a transient veto with a confusing name: the same call succeeds milliseconds
+ * later. Before this loop existed, one such veto failed the whole install *and*
+ * left the staging directory behind, because the cleanup could not remove a
+ * directory that was still held either.
+ */
+export const RENAME_ATTEMPTS = 6
+export const RENAME_BACKOFF_MS = 60
+
+/**
  * One install/uninstall failure, carrying the HTTP status the route layer reports.
  *
  * The status travels with the error rather than being re-derived from the code,
@@ -88,14 +105,14 @@ export const OPERATION_CODES = {
   fileTooLarge: 'FILE_TOO_LARGE',
 } as const
 
-// ── Path safety ─────────────────────────────────────────────────────────────
+// 鈹€鈹€ Path safety 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 /**
  * Whether a registry-supplied path is safe to join onto a destination.
  *
  * The rules are deliberately strict, because this is the one place where an
  * untrusted string becomes a filesystem write: no absolute paths, no backslashes
- * (a Windows path separator that `path.posix` would treat as a filename
+ * (a Windows path separator that `nodePath.posix` would treat as a filename
  * character), no NUL, no `..` after normalization, and no empty or dot segments.
  *
  * The path must also **already be canonical** (`./a`, `a//b`, and `a/./b` are
@@ -109,7 +126,7 @@ export function isSafeRelativeFilePath(filePath: string): boolean {
   if (filePath === '' || filePath.length > MAX_FILE_PATH_LENGTH) return false
   if (filePath.includes('\0') || filePath.includes('\\')) return false
   if (filePath.startsWith('/')) return false
-  const normalized = path.posix.normalize(filePath)
+  const normalized = nodePath.posix.normalize(filePath)
   if (normalized !== filePath) return false
   if (normalized.startsWith('..') || normalized.startsWith('/')) return false
   if (normalized === '.') return false
@@ -121,20 +138,215 @@ export function sha256Hex(content: string): string {
   return createHash('sha256').update(content, 'utf8').digest('hex')
 }
 
-// ── Install ─────────────────────────────────────────────────────────────────
+// 鈹€鈹€ Install 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 /** Install coordination, keyed by the *normalized directory* a skill would occupy. */
 const inFlight = new Map<string, Promise<unknown>>()
 
+/**
+ * Staging directories an attempt is using right now.
+ *
+ * The orphan sweep below removes leftovers from *previous* attempts; without this
+ * set it would happily delete the staging directory of a concurrent install that
+ * has not published yet.
+ */
+const activeStaging = new Set<string>()
+
 /** Drop the in-flight table (tests; a reload must not inherit another instance's locks). */
 export function resetInstallLocks(): void {
   inFlight.clear()
+  activeStaging.clear()
+}
+
+/** One `Error`, optionally carrying the operating system's own error code. */
+function isErrorCode(error: unknown, ...codes: string[]): boolean {
+  const code = (error as { code?: unknown } | null)?.code
+  return typeof code === 'string' && codes.includes(code)
+}
+
+/**
+ * Whether this is the filesystem's way of saying "not right now".
+ *
+ * `EPERM` is the one that matters and the one that misleads: on Windows it is what
+ * a scanner holding a handle produces, not an authorization problem. `EBUSY` is
+ * the same story told by a different layer.
+ */
+export function isTransientLock(error: unknown): boolean {
+  return isErrorCode(error, 'EPERM', 'EACCES', 'EBUSY')
+}
+
+/** Default sleep, injectable so a test can assert the retry without waiting for it. */
+function defaultDelay(ms: number): Promise<void> {
+  return new Promise((resolve) => { setTimeout(resolve, ms) })
+}
+
+/**
+ * Run an operation that a filesystem filter may veto for a moment.
+ *
+ * @returns the operation's value, or the last failure when every attempt failed.
+ */
+async function withLockRetry<T>(
+  attempt: () => Promise<T>,
+  attempts: number,
+  delay: (ms: number) => Promise<void>,
+): Promise<T> {
+  let last: unknown
+  for (let index = 0; index < attempts; index += 1) {
+    try {
+      return await attempt()
+    } catch (error) {
+      last = error
+      // Anything that is not a held handle is a real answer: retrying an `ENOENT`
+      // or an `ENOTEMPTY` would only make the caller wait for the same failure.
+      if (!isTransientLock(error)) throw error
+      if (index < attempts - 1) await delay(RENAME_BACKOFF_MS * (index + 1))
+    }
+  }
+  throw last
+}
+
+/** `EPERM: operation not permitted, rename 'a' -> 'b'` — the OS text, without a stack. */
+function errorDetail(error: unknown): string {
+  const text = error instanceof Error ? error.message : String(error)
+  return text.split('\n')[0]?.trim() ?? 'unknown error'
+}
+
+async function removeBestEffort(fs: PublishFs, target: string, delay: (ms: number) => Promise<void>): Promise<boolean> {
+  try {
+    await withLockRetry(async () => { await fs.rm(target) }, RENAME_ATTEMPTS, delay)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Publish the staged tree with the one atomic rename.
+ *
+ * @throws {@link SkillOperationError} naming the *actual* cause. Getting this
+ *   classification wrong is expensive: `EPERM` (the destination is occupied) was
+ *   reported as a generic disk error, so the reader staring at "publishing the
+ *   skill failed" had no way to learn that a directory was in the way.
+ */
+async function publishStaging(
+  fs: PublishFs,
+  staging: string,
+  destination: string,
+  id: string,
+  source: MarketSource,
+  slug: string,
+  delay: (ms: number) => Promise<void>,
+): Promise<void> {
+  try {
+    await withLockRetry(async () => { await fs.rename(staging, destination) }, RENAME_ATTEMPTS, delay)
+    return
+  } catch (error) {
+    // The rename result alone does not say which of these happened, and the
+    // answers are different problems for the reader. Asking the disk settles it.
+    if (await fs.exists(destination)) {
+      const meta = await readInstalledMeta(destination, source, slug).catch(() => null)
+      if (meta !== null && meta.id === id) {
+        throw new SkillOperationError(409, OPERATION_CODES.alreadyInstalled, 'this skill is already installed')
+      }
+      throw new SkillOperationError(
+        409,
+        OPERATION_CODES.notInstallable,
+        `something already occupies ${nodePath.basename(destination)} and this plugin did not put it there; move it aside by hand and retry`,
+      )
+    }
+
+    if (!await fs.exists(staging)) {
+      throw new SkillOperationError(500, OPERATION_CODES.diskError, 'the staged files disappeared before they could be published')
+    }
+
+    throw new SkillOperationError(
+      500,
+      OPERATION_CODES.diskError,
+      isTransientLock(error)
+        ? `the operating system refused to publish the skill after ${RENAME_ATTEMPTS} attempts (${errorDetail(error)}); a scanner, indexer, or sync tool may be holding the directory — retry, and remove ${nodePath.basename(staging)} by hand if it stays behind`
+        : `publishing the skill failed (${errorDetail(error)})`,
+    )
+  }
+}
+
+/**
+ * Remove staging directories left behind by earlier attempts.
+ *
+ * A leftover is not just clutter: it is a directory that the attempt which created
+ * it could not delete, which means something on this machine is holding a handle
+ * on it. Reporting that is the difference between a user who can repair their
+ * skills directory and one who watches the same install fail forever with no
+ * explanation.
+ *
+ * @returns the paths that are still there, so the caller can log them.
+ */
+export async function sweepStagingDirectories(
+  skillsRoot: string,
+  options: { delay?: (ms: number) => Promise<void>; fs?: PublishFs } = {},
+): Promise<string[]> {
+  const delay = options.delay ?? defaultDelay
+  const fs = publishFs(options.fs)
+  const stuck: string[] = []
+
+  let entries
+  try {
+    entries = await nodeFs.readdir(skillsRoot, { withFileTypes: true })
+  } catch {
+    // No skills root yet is not a problem to report: the first install creates it.
+    return stuck
+  }
+
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !entry.name.startsWith(STAGING_PREFIX)) continue
+    const target = nodePath.join(skillsRoot, entry.name)
+    if (activeStaging.has(target)) continue
+    if (!await removeBestEffort(fs, target, delay)) stuck.push(target)
+  }
+
+  return stuck
 }
 
 export interface InstallOptions {
   skillsRoot: string
   /** The author the caller pinned, when the registry's slugs are shared. */
   owner?: string
+  /**
+   * Called with the absolute path of a staging directory that could not be
+   * removed — an earlier attempt's leftover, or this attempt's own.
+   *
+   * The host logs it. It is not an error the caller can act on (the install it
+   * asked for may have succeeded), which is exactly why it must not be silent.
+   */
+  onStuckStaging?: (stagingPath: string) => void
+  /** Sleep between publish attempts; injectable so a test does not wait for real. */
+  delay?: (ms: number) => Promise<void>
+  /** The three filesystem calls the publish path makes; see {@link PublishFs}. */
+  fs?: PublishFs
+}
+
+/**
+ * The filesystem calls the publish path makes, behind one seam.
+ *
+ * The failures this path has to survive are races — a Windows scanner holding a
+ * handle on a directory that was just created — and a race cannot be arranged on
+ * demand. Two ways to test the response to one: patch `node:fs/promises`
+ * globally, which an ES module namespace refuses, or hand the operation in. This
+ * is the second, and it is also the honest description of what the code needs.
+ */
+export interface PublishFs {
+  rename(from: string, to: string): Promise<void>
+  rm(target: string): Promise<void>
+  exists(target: string): Promise<boolean>
+}
+
+const realFs: PublishFs = {
+  rename: (from, to) => nodeFs.rename(from, to),
+  rm: async (target) => { await nodeFs.rm(target, { recursive: true, force: true }) },
+  exists: async (target) => await nodeFs.lstat(target).then(() => true, () => false),
+}
+
+function publishFs(override: PublishFs | undefined): PublishFs {
+  return override ?? realFs
 }
 
 export interface InstallResult {
@@ -178,7 +390,7 @@ export function assertInstallableInventory(files: readonly MarketFileMeta[]): vo
 async function assertInstallTargetFree(target: string, id: string, source: MarketSource, slug: string): Promise<void> {
   let stats
   try {
-    stats = await fs.lstat(target)
+    stats = await nodeFs.lstat(target)
   } catch {
     return
   }
@@ -309,10 +521,21 @@ async function performInstall(
   const destination = resolveInside(options.skillsRoot, dirName)
   await assertInstallTargetFree(destination, id, source, slug)
 
-  await fs.mkdir(options.skillsRoot, { recursive: true })
+  const fs = publishFs(options.fs)
+  const delay = options.delay ?? defaultDelay
+
+  await nodeFs.mkdir(options.skillsRoot, { recursive: true })
+  // Clear anything an earlier attempt could not remove before adding to it: the
+  // alternative is a skills root that accumulates one dead directory per failure.
+  const leftovers = await sweepStagingDirectories(options.skillsRoot, { delay, ...(options.fs === undefined ? {} : { fs: options.fs }) })
+  for (const leftover of leftovers) {
+    options.onStuckStaging?.(leftover)
+  }
+
   // Staging inside the destination's own parent makes the publishing `rename` a
   // same-filesystem operation, which is what makes it atomic.
-  const staging = await fs.mkdtemp(path.join(options.skillsRoot, STAGING_PREFIX))
+  const staging = await nodeFs.mkdtemp(nodePath.join(options.skillsRoot, STAGING_PREFIX))
+  activeStaging.add(staging)
 
   try {
     const ledger: Array<{ path: string; sha256: string }> = []
@@ -340,11 +563,11 @@ async function performInstall(
 
       const filePath = resolveInside(staging, ...file.path.split('/'))
       try {
-        await fs.mkdir(path.dirname(filePath), { recursive: true })
-        await fs.writeFile(filePath, fetched.content, { encoding: 'utf8', mode: 0o644 })
+        await nodeFs.mkdir(nodePath.dirname(filePath), { recursive: true })
+        await nodeFs.writeFile(filePath, fetched.content, { encoding: 'utf8', mode: 0o644 })
       } catch {
         // Node's filesystem errors carry absolute paths; the reader gets a
-        // sentence instead of a machine path.
+        // sentence instead of a machine nodePath.
         throw new SkillOperationError(500, OPERATION_CODES.diskError, 'writing the skill to disk failed')
       }
       ledger.push({ path: file.path, sha256: digest })
@@ -359,20 +582,12 @@ async function performInstall(
       ...(detail.author.handle === undefined || detail.author.handle === '' ? {} : { owner: detail.author.handle }),
       ...(detail.version === undefined ? {} : { version: detail.version }),
     }
-    await fs.writeFile(path.join(staging, INSTALL_META_FILE), serializeInstalledMeta(meta), { encoding: 'utf8', mode: 0o644 })
+    await nodeFs.writeFile(nodePath.join(staging, INSTALL_META_FILE), serializeInstalledMeta(meta), { encoding: 'utf8', mode: 0o644 })
 
     // Re-check immediately before publishing: a manual install can land in the
     // window between the first check and this rename.
     await assertInstallTargetFree(destination, id, source, slug)
-    try {
-      await fs.rename(staging, destination)
-    } catch (error) {
-      const code = (error as { code?: unknown }).code
-      if (code === 'ENOTEMPTY' || code === 'EEXIST' || code === 'ENOTDIR') {
-        throw new SkillOperationError(409, OPERATION_CODES.notInstallable, 'a different skill already occupies that directory')
-      }
-      throw new SkillOperationError(500, OPERATION_CODES.diskError, 'publishing the skill failed')
-    }
+    await publishStaging(fs, staging, destination, id, source, slug, delay)
 
     const installedAt = meta.installedAt
     return {
@@ -387,12 +602,19 @@ async function performInstall(
       },
     }
   } finally {
-    // A no-op once the rename succeeded (the staging path no longer exists).
-    await fs.rm(staging, { recursive: true, force: true }).catch(() => undefined)
+    activeStaging.delete(staging)
+    // A no-op once the rename succeeded (the staging path no longer exists). The
+    // result is *reported* rather than swallowed: a staging directory that cannot
+    // be removed is the marker of a held handle on this machine, and a silent
+    // failure here is what turns one failed install into an unexplained mess in
+    // the user's skills directory.
+    if (!await removeBestEffort(fs, staging, delay)) {
+      options.onStuckStaging?.(staging)
+    }
   }
 }
 
-// ── Uninstall ───────────────────────────────────────────────────────────────
+// 鈹€鈹€ Uninstall 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 export interface UninstallOptions {
   skillsRoot: string
@@ -463,7 +685,7 @@ export async function uninstallInstalledEntry(
   if (item.linked) {
     // A link is someone else's skill reachable from here: removing it means
     // unlinking, never following the link and deleting the target.
-    await fs.unlink(item.dirPath).catch(() => {
+    await nodeFs.unlink(item.dirPath).catch(() => {
       throw new SkillOperationError(500, OPERATION_CODES.diskError, 'removing the link failed')
     })
     return { removedPath: item.dirPath, item }
@@ -474,13 +696,13 @@ export async function uninstallInstalledEntry(
     if (!item.managed) {
       throw new SkillOperationError(409, OPERATION_CODES.notManaged, 'this skill was not installed by the market and will not be removed')
     }
-    await removeManagedDirectory(path.dirname(item.dirPath), item.dirName, item.source as MarketSource, item.slug)
+    await removeManagedDirectory(nodePath.dirname(item.dirPath), item.dirName, item.source as MarketSource, item.slug)
     return { removedPath: item.dirPath, item }
   }
 
   // A flat `.md` skill has no sidecar and no directory; removing it is a single
   // unlink, and it is only offered for entries the caller explicitly selected.
-  await fs.unlink(item.dirPath).catch(() => {
+  await nodeFs.unlink(item.dirPath).catch(() => {
     throw new SkillOperationError(500, OPERATION_CODES.diskError, 'removing the skill file failed')
   })
   return { removedPath: item.dirPath, item }
@@ -503,7 +725,7 @@ async function removeManagedDirectory(
 
   let stats
   try {
-    stats = await fs.lstat(target)
+    stats = await nodeFs.lstat(target)
   } catch {
     throw new SkillOperationError(404, OPERATION_CODES.notInstalled, 'no installed skill by that name')
   }
@@ -518,7 +740,7 @@ async function removeManagedDirectory(
 
   // Read the headline before the directory goes away, so a removal that is
   // confirmed to the user can still name what was removed.
-  const headline = await fs.readFile(path.join(target, 'SKILL.md'), 'utf8')
+  const headline = await nodeFs.readFile(nodePath.join(target, 'SKILL.md'), 'utf8')
     .then((content) => {
       const parsed = skillHeadline(content, dirName)
       return { name: parsed.name ?? dirName, ...(parsed.summary === undefined ? {} : { summary: parsed.summary }) }
@@ -527,16 +749,24 @@ async function removeManagedDirectory(
 
   const trash = resolveInside(skillsRoot, `${TRASH_PREFIX}${dirName}-${randomUUID()}`)
   try {
-    await fs.rename(target, trash)
-  } catch {
-    throw new SkillOperationError(500, OPERATION_CODES.diskError, 'removing the skill failed')
+    // The same veto the publish faces: a handle held on the skill directory makes
+    // the rename fail with `EPERM` even though nothing is wrong with the request.
+    await withLockRetry(async () => { await nodeFs.rename(target, trash) }, RENAME_ATTEMPTS, defaultDelay)
+  } catch (error) {
+    throw new SkillOperationError(
+      500,
+      OPERATION_CODES.diskError,
+      isTransientLock(error)
+        ? `the operating system refused to remove the skill (${errorDetail(error)}); something is holding a file inside this skill directory — retry, or close whatever has it open`
+        : `removing the skill failed (${errorDetail(error)})`,
+    )
   }
-  await fs.rm(trash, { recursive: true, force: true }).catch(() => undefined)
+  await removeBestEffort(realFs, trash, defaultDelay)
 
   return { dir: target, meta, headline }
 }
 
-// ── Installed reads ─────────────────────────────────────────────────────────
+// 鈹€鈹€ Installed reads 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 export interface InstalledDetail {
   item: InstalledSkillRecord
@@ -562,10 +792,10 @@ export async function readInstalledSkill(roots: readonly string[], key: string):
   }
 
   const isFlat = item.dirPath.toLowerCase().endsWith('.md')
-  const skillFile = isFlat ? item.dirPath : path.join(item.dirPath, 'SKILL.md')
+  const skillFile = isFlat ? item.dirPath : nodePath.join(item.dirPath, 'SKILL.md')
   let stats
   try {
-    stats = await fs.stat(skillFile)
+    stats = await nodeFs.stat(skillFile)
   } catch {
     throw new SkillOperationError(404, OPERATION_CODES.notInstalled, 'this skill has no readable SKILL.md')
   }
@@ -573,9 +803,9 @@ export async function readInstalledSkill(roots: readonly string[], key: string):
     throw new SkillOperationError(413, OPERATION_CODES.fileTooLarge, 'this skill document is too large to preview')
   }
 
-  const markdown = await fs.readFile(skillFile, 'utf8')
+  const markdown = await nodeFs.readFile(skillFile, 'utf8')
   const files = item.linked || isFlat
-    ? [{ path: path.basename(skillFile), size: stats.size, language: 'markdown' }]
+    ? [{ path: nodePath.basename(skillFile), size: stats.size, language: 'markdown' }]
     : await listEntryFiles(item.dirPath)
 
   return { item, markdown, frontmatter: rawFrontmatterText(markdown), files }
@@ -601,25 +831,25 @@ export async function readInstalledEntryFile(
     throw new SkillOperationError(400, 'BAD_REQUEST', 'that file path is not a safe relative path')
   }
 
-  const base = item.dirPath.toLowerCase().endsWith('.md') ? path.dirname(item.dirPath) : item.dirPath
-  const target = path.resolve(base, ...filePath.split('/'))
+  const base = item.dirPath.toLowerCase().endsWith('.md') ? nodePath.dirname(item.dirPath) : item.dirPath
+  const target = nodePath.resolve(base, ...filePath.split('/'))
   if (!isInside(base, target)) {
     throw new SkillOperationError(400, 'BAD_REQUEST', 'that file is outside the skill directory')
   }
 
   let real: string
   try {
-    real = await fs.realpath(target)
+    real = await nodeFs.realpath(target)
   } catch {
     throw new SkillOperationError(404, OPERATION_CODES.notInstalled, 'no such file in this skill')
   }
-  if (!isInside(await fs.realpath(base), real)) {
+  if (!isInside(await nodeFs.realpath(base), real)) {
     throw new SkillOperationError(400, 'BAD_REQUEST', 'that file escapes the skill directory')
   }
 
   let stats
   try {
-    stats = await fs.stat(real)
+    stats = await nodeFs.stat(real)
   } catch {
     throw new SkillOperationError(404, OPERATION_CODES.notInstalled, 'no such file in this skill')
   }
@@ -628,7 +858,7 @@ export async function readInstalledEntryFile(
   }
 
   const limit = MARKET_LIMITS.previewTruncateBytes
-  const handle = await fs.open(real, 'r')
+  const handle = await nodeFs.open(real, 'r')
   try {
     const buffer = Buffer.alloc(Math.min(limit, stats.size))
     const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0)

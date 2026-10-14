@@ -36,7 +36,7 @@ import {
   resetSourceStatus,
   withProviderConfiguration,
 } from './market/provider-fetch.ts'
-import { resetInstallLocks } from './skills/install-service.ts'
+import { resetInstallLocks, sweepStagingDirectories } from './skills/install-service.ts'
 import { detectStaleBuild, staleBuildWarning } from './stale-build.ts'
 import {
   readJsonBody,
@@ -74,7 +74,7 @@ export { Config }
  * compiler's root inference. `scripts/verify.mjs` asserts this literal matches
  * the manifest instead.
  */
-export const PLUGIN_VERSION = '0.1.3'
+export const PLUGIN_VERSION = '0.1.4'
 
 /** Web-server service keys, newest first (older compositions spell it `httpServer`). */
 const WEB_SERVER_KEYS = ['webServer', 'httpServer'] as const
@@ -186,6 +186,31 @@ export function apply(ctx: Context, config?: Partial<SkillsMarketHubConfig>): vo
   })
   void initialScan.then(() => refreshSkillCatalog(ctx))
 
+  /**
+   * Report a staging directory that survived its own cleanup.
+   *
+   * This is the one place the user can learn that something on their machine is
+   * holding a handle inside the skills directory. It is a warning and not an
+   * error: the install it belonged to may well have succeeded, and the leftover
+   * is invisible to the inventory either way.
+   */
+  const reportStuckStaging = (stagingPath: string): void => {
+    ctx.logger.warn(
+      `skills-market-hub: could not remove the staging directory ${stagingPath}; `
+      + 'something on this machine is holding it (a scanner, indexer, or sync tool). '
+      + 'It is ignored by the skill inventory, and the next install will try again.',
+    )
+  }
+
+  // Clear what an earlier session could not: a staging directory only ever
+  // outlives its install when a handle was held on it, and that handle is
+  // released when the process holding it exits — which is exactly what restarting
+  // the harness does. Reported once at startup rather than on every install.
+  void resolveSkillsRoot(resolved.skillsRoot)
+    .then((root) => sweepStagingDirectories(root))
+    .then((stuck) => { for (const leftover of stuck) reportStuckStaging(leftover) })
+    .catch(() => undefined)
+
   const routeContext: RouteContext = {
     pageSize: resolved.pageSize,
     version: PLUGIN_VERSION,
@@ -201,6 +226,7 @@ export function apply(ctx: Context, config?: Partial<SkillsMarketHubConfig>): vo
         await rescan()
       })
     },
+    onStuckStaging: reportStuckStaging,
     stats: () => getMarketStats(cache),
   }
 

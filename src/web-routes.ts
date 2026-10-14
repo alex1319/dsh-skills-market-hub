@@ -333,6 +333,15 @@ export interface RouteContext {
   allowUninstall: () => boolean
   /** Rebuild the inventory and settle the harness skill catalog. */
   rescan: () => Promise<void>
+  /**
+   * Called with the absolute path of a staging directory that could not be
+   * removed.
+   *
+   * A staging directory nobody can delete is the visible symptom of something on
+   * this machine holding a handle on it, and the user is the only one who can act
+   * on that — so it is logged with its path rather than swallowed.
+   */
+  onStuckStaging: (stagingPath: string) => void
   /** Cache and upstream counters. */
   stats: () => MarketCacheStats
 }
