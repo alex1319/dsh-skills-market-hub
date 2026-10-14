@@ -79,6 +79,10 @@ export declare const zh: {
     readonly installedEmpty: "本机还没有安装任何技能。";
     readonly installedEmptyHint: "到「市场」里挑一个装进来，或手动放到技能目录。";
     readonly uninstallHint: "卸载会删除这个技能的目录，且不可撤销。";
+    readonly installedFilterSource: "按来源筛选";
+    readonly installedSourceAll: "全部来源";
+    readonly installedSourceLocal: "本地";
+    readonly installedFilterSourceHint: "来源取自安装时写入的溯源文件；手动放入的技能归为「本地」。";
     readonly detailOverview: "概览";
     readonly detailFiles: "文件";
     readonly detailSecurity: "安全";
@@ -88,6 +92,10 @@ export declare const zh: {
     readonly detailTags: "标签";
     readonly detailVersion: "版本";
     readonly detailDownloads: "下载";
+    readonly detailStars: "收藏";
+    readonly detailInstalls: "安装";
+    readonly detailDownloadsHint: "上游注册表记录的下载次数。";
+    readonly detailStarsHint: "上游注册表记录的收藏（star）数；SkillHub 上多数技能为 0，那是注册表本身的数据。";
     readonly detailUpdated: "更新";
     readonly detailFileEmpty: "这个技能没有可预览的文件";
     readonly detailFileTooBig: "文件超过预览体积上限";

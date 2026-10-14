@@ -108,9 +108,13 @@ export function SkillCard({ skill, busy, onOpen, onInstall }: SkillCardProps) {
         </Pill>
         {skill.requiresApiKey === true ? <Pill tone="warn">{t('detailRequiresKey')}</Pill> : null}
         {installed ? <Pill tone="ok">{t('installed')}</Pill> : null}
-        <span style={{ marginLeft: 'auto', fontSize: 11, color: token.labelSecondary }}>
-          {/* Downloads are the one popularity signal both registries publish. */}
-          {t('detailDownloads')} {countText(skill.stats.downloads)}
+        {/* The two popularity signals both registries publish. Downloads count
+            everyone who took a copy; stars count the readers who kept it — and a
+            reader who has not seen both side by side cannot tell a skill that is
+            widely copied from one that is widely kept. */}
+        <span style={{ marginLeft: 'auto', display: 'flex', gap: SPACE.sm, fontSize: 11, color: token.labelSecondary }}>
+          <span title={t('detailDownloadsHint')}>{t('detailDownloads')} {countText(skill.stats.downloads)}</span>
+          <span title={t('detailStarsHint')}>{t('detailStars')} {countText(skill.stats.stars ?? 0)}</span>
         </span>
       </div>
 

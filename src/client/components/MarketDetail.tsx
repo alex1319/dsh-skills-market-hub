@@ -158,8 +158,8 @@ export function MarketDetail(props: MarketDetailProps) {
           borderTop: `1px solid ${token.borderL1}`,
         }}>
           <Fact label={t('detailDownloads')} value={countText(detail.stats.downloads)} />
-          {detail.stats.installs === undefined ? null : <Fact label="Installs" value={countText(detail.stats.installs)} />}
-          {detail.stats.stars === undefined ? null : <Fact label="Stars" value={countText(detail.stats.stars)} />}
+          {detail.stats.installs === undefined ? null : <Fact label={t('detailInstalls')} value={countText(detail.stats.installs)} />}
+          <Fact label={t('detailStars')} value={countText(detail.stats.stars ?? 0)} />
           <Fact label={t('detailUpdated')} value={shortDate(detail.updatedAt) ?? '—'} />
           <Fact label={t('detailFiles')} value={`${detail.files.length} · ${fileSizeText(detail.totalSize)}`} />
         </dl>

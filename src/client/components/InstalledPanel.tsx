@@ -13,12 +13,13 @@
  *    directory by that name.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useT } from '../translate.tsx'
 import {
   Button,
   Notice,
   Pill,
+  SelectField,
   Skeleton,
   SourceBlock,
   SPACE,
@@ -28,6 +29,26 @@ import {
   token,
 } from '../ui.tsx'
 import type { InstalledSkillDetail, InstalledSkillRecord, MarketFileContent } from '../api.ts'
+
+/**
+ * The source to filter the inventory by.
+ *
+ * `'all'` is a UI sentinel, not a registry: `source` on a record is a market
+ * source or the literal `local` for a directory this plugin did not write.
+ */
+type InstalledSourceFilter = 'all' | 'local' | 'clawhub' | 'skillhub'
+
+/**
+ * The label for one installed entry's origin.
+ *
+ * The registry id is printed exactly as the market cards print it — lowercase,
+ * verbatim. Capitalising it here would give one registry two spellings, and the
+ * reader comparing a card against an installed row is the whole point of showing
+ * the source. Only `local` is translated, because only `local` is not an id.
+ */
+function sourceLabelOf(source: InstalledSkillRecord['source'], t: (key: 'installedSourceLocal') => string): string {
+  return source === 'local' ? t('installedSourceLocal') : source
+}
 
 export interface InstalledPanelProps {
   items: InstalledSkillRecord[]
@@ -46,20 +67,62 @@ export interface InstalledPanelProps {
   onRequestRemove: (key: string) => void
 }
 
+/**
+ * The entries a filter and a search term leave visible.
+ *
+ * Extracted from the component because it is the only part of this view with a
+ * decision in it, and a rendered snapshot can only ever prove the unfiltered case:
+ * `renderToStaticMarkup` runs no effects and no event handlers, so nothing in a
+ * static render can select a different source. A pure function is testable, and
+ * the component keeps only the wiring.
+ *
+ * The two conditions are an AND, and the search covers the same fields it always
+ * did — the source filter narrows what the search looks through, rather than
+ * replacing it.
+ */
+export function filterInstalled(
+  items: readonly InstalledSkillRecord[],
+  source: InstalledSourceFilter,
+  query: string,
+): InstalledSkillRecord[] {
+  const needle = query.trim().toLowerCase()
+  return items
+    .filter((item) => source === 'all' || item.source === source)
+    .filter((item) => needle === '' || [
+      item.name, item.dirName, item.slug, item.owner ?? '', item.summary ?? '',
+    ].join(' ').toLowerCase().includes(needle))
+}
+
 export function InstalledPanel(props: InstalledPanelProps) {
   const t = useT()
   const [query, setQuery] = useState('')
+  const [source, setSource] = useState<InstalledSourceFilter>('all')
+
+  // Only the sources actually present are offered. A fixed list would show a
+  // filter that can only ever empty the list, and this inventory is a fact about
+  // *this* machine, not about what the registries publish.
+  const sourceOptions = useMemo(() => {
+    const present = new Set(props.items.map((item) => item.source))
+    const known: Array<{ value: InstalledSourceFilter; label: string }> = [
+      { value: 'local', label: t('installedSourceLocal') },
+      { value: 'clawhub', label: 'clawhub' },
+      { value: 'skillhub', label: 'skillhub' },
+    ]
+    return [
+      { value: 'all' as const, label: t('installedSourceAll') },
+      ...known.filter((entry) => present.has(entry.value as InstalledSkillRecord['source'])),
+    ]
+  }, [props.items, t])
 
   if (props.detail !== null || props.detailLoading) {
     return <InstalledDetailView {...props} />
   }
 
-  const needle = query.trim().toLowerCase()
-  const visible = needle === ''
-    ? props.items
-    : props.items.filter((item) => [
-        item.name, item.dirName, item.slug, item.owner ?? '', item.summary ?? '',
-      ].join(' ').toLowerCase().includes(needle))
+  // A source that is no longer in the inventory falls back to `all` rather than
+  // showing an empty list with a filter the reader can no longer see in the menu.
+  const activeSource = sourceOptions.some((entry) => entry.value === source) ? source : 'all'
+  const visible = filterInstalled(props.items, activeSource, query)
+  const filtered = activeSource !== 'all' || query.trim() !== ''
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
@@ -71,12 +134,23 @@ export function InstalledPanel(props: InstalledPanelProps) {
           placeholder={t('installedSearch')}
           onChange={(event) => { setQuery(event.currentTarget.value) }}
           style={{
-            font: 'inherit', fontSize: 13, flex: '1 1 240px', minWidth: 180,
+            font: 'inherit', fontSize: 13, flex: '1 1 200px', minWidth: 160,
             padding: '7px 10px', borderRadius: radius.md,
             border: `1px solid ${token.borderL2}`, background: token.bgLayer1, color: token.labelPrimary,
           }}
         />
-        <span style={{ fontSize: 12, color: token.labelSecondary }}>{props.items.length}</span>
+        <SelectField
+          value={activeSource}
+          options={sourceOptions}
+          onChange={setSource}
+          ariaLabel={t('installedFilterSource')}
+          ariaDescription={t('installedFilterSourceHint')}
+        />
+        {/* The count follows the filter: a total that ignores it would make the
+            filter look broken. */}
+        <span style={{ fontSize: 12, color: token.labelSecondary }}>
+          {filtered ? `${visible.length} / ${props.items.length}` : props.items.length}
+        </span>
         <Button onClick={props.onRefresh}>{t('refresh')}</Button>
       </div>
 
@@ -124,12 +198,19 @@ function InstalledRow({ item, onOpen, onRemove }: { item: InstalledSkillRecord; 
           >
             {item.name}
           </button>
+          {/* Where it came from, then how it is managed: two different facts that
+              used to be one pill. "From market" says nothing about *which* market,
+              and the reader's next question is always that. */}
+          <Pill tone={item.source === 'local' ? 'muted' : 'brand'} title={t('installedFilterSourceHint')}>
+            {sourceLabelOf(item.source, t)}
+          </Pill>
           <Pill tone={item.managed ? 'ok' : 'muted'}>{item.managed ? t('installedManaged') : t('installedLocal')}</Pill>
           {item.linked ? <Pill tone="muted">{t('installedLinked')}</Pill> : null}
           {item.version === undefined ? null : <Pill tone="neutral">v{item.version}</Pill>}
         </div>
         <div style={{ fontSize: 11, color: token.labelSecondary, marginTop: 2, wordBreak: 'break-all' }}>
           {item.dirPath}
+          {item.owner === undefined ? '' : ` · ${item.owner}`}
         </div>
       </div>
 

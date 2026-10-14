@@ -79,6 +79,28 @@ function skill(overrides = {}) {
   }
 }
 
+/** One installed inventory row, shaped as the host's scanner reports one. */
+function installed(overrides = {}) {
+  return {
+    key: 'a'.repeat(64),
+    linked: false,
+    removable: true,
+    id: 'clawhub:demo',
+    source: 'clawhub',
+    slug: 'demo',
+    owner: 'author',
+    name: 'Demo Skill',
+    dirName: 'demo',
+    dirPath: 'C:/skills/demo',
+    version: '1.0.0',
+    installedAt: '2026-01-01T00:00:00.000Z',
+    managed: true,
+    bytes: 2048,
+    fileCount: 3,
+    ...overrides,
+  }
+}
+
 /**
  * Render the panel the way the framework does: one component, one locale seat.
  *
@@ -423,6 +445,137 @@ describe('client panel render', () => {
       })),
     )
     assert.match(html, /C:\/skills\/demo/)
+  })
+
+  it('shows both popularity figures on a card, not just downloads', async () => {
+    const { SkillGrid } = await import('../lib/client/components/SkillCard.js')
+    const { TranslateProvider } = await import('../lib/client/translate.js')
+
+    const html = renderToStaticMarkup(
+      React.createElement(TranslateProvider, { t }, React.createElement(SkillGrid, {
+        skills: [skill({ stats: { downloads: 484723, installs: 18487, stars: 3998 } })],
+        installingIds: [],
+        onOpen: () => undefined,
+        onInstall: () => undefined,
+      })),
+    )
+
+    // The keys come back verbatim because the test's `t` is the identity, so each
+    // assertion names the dictionary entry the UI reads.
+    assert.match(html, /detailDownloads/)
+    assert.match(html, /detailStars/)
+    assert.match(html, /4\.0k/, 'stars are rendered with the same compaction as downloads')
+    assert.match(html, /485k/)
+  })
+
+  it('renders a star count of zero rather than an empty figure', async () => {
+    const { SkillGrid } = await import('../lib/client/components/SkillCard.js')
+    const { TranslateProvider } = await import('../lib/client/translate.js')
+
+    const html = renderToStaticMarkup(
+      React.createElement(TranslateProvider, { t }, React.createElement(SkillGrid, {
+        // Most SkillHub entries really are zero; that is the registry's figure, and
+        // an em dash here would read as "unknown" instead of "nobody starred it".
+        skills: [skill({ stats: { downloads: 13, stars: 0 } })],
+        installingIds: [],
+        onOpen: () => undefined,
+        onInstall: () => undefined,
+      })),
+    )
+
+    assert.match(html, /detailStars 0<\/span>/, 'the label and its zero are both rendered')
+  })
+
+  it('labels every installed row with the registry it came from', async () => {
+    const { InstalledPanel } = await import('../lib/client/components/InstalledPanel.js')
+    const { TranslateProvider } = await import('../lib/client/translate.js')
+
+    const html = renderToStaticMarkup(
+      React.createElement(TranslateProvider, { t }, React.createElement(InstalledPanel, {
+        items: [
+          installed({ key: 'a'.repeat(64), id: 'clawhub:demo', source: 'clawhub', slug: 'demo', name: 'From ClawHub' }),
+          installed({ key: 'b'.repeat(64), id: 'skillhub:other', source: 'skillhub', slug: 'other', name: 'From SkillHub' }),
+          installed({ key: 'c'.repeat(64), id: 'local:mine', source: 'local', slug: 'mine', name: 'Handwritten', managed: false }),
+        ],
+        loading: false, error: null, detail: null, detailLoading: false, detailError: null,
+        file: null, fileLoading: false, fileError: null,
+        onRefresh: () => undefined, onOpen: () => undefined, onCloseDetail: () => undefined,
+        onSelectFile: () => undefined, onRequestRemove: () => undefined,
+      })),
+    )
+
+    assert.match(html, /title="installedFilterSourceHint"[^>]*>clawhub<\/span>/, 'the registry id, in the card\u2019s own spelling')
+    assert.match(html, /title="installedFilterSourceHint"[^>]*>skillhub<\/span>/)
+    assert.match(html, />installedSourceLocal</)
+  })
+
+  it('offers only the sources the inventory actually holds', async () => {
+    const { InstalledPanel } = await import('../lib/client/components/InstalledPanel.js')
+    const { TranslateProvider } = await import('../lib/client/translate.js')
+
+    const render = (items) => renderToStaticMarkup(
+      React.createElement(TranslateProvider, { t }, React.createElement(InstalledPanel, {
+        items, loading: false, error: null, detail: null, detailLoading: false, detailError: null,
+        file: null, fileLoading: false, fileError: null,
+        onRefresh: () => undefined, onOpen: () => undefined, onCloseDetail: () => undefined,
+        onSelectFile: () => undefined, onRequestRemove: () => undefined,
+      })),
+    )
+
+    const onlyLocal = render([installed({ key: 'c'.repeat(64), source: 'local', managed: false })])
+    assert.match(onlyLocal, /<option value="all"/)
+    assert.match(onlyLocal, /<option value="local"/)
+    // A filter that can only ever empty the list is not offered.
+    assert.ok(!onlyLocal.includes('<option value="clawhub"'), `unexpected option:\n${onlyLocal}`)
+    assert.ok(!onlyLocal.includes('<option value="skillhub"'))
+
+    const mixed = render([
+      installed({ key: 'a'.repeat(64), source: 'clawhub' }),
+      installed({ key: 'b'.repeat(64), source: 'skillhub' }),
+    ])
+    assert.match(mixed, /<option value="clawhub"/)
+    assert.match(mixed, /<option value="skillhub"/)
+    assert.ok(!mixed.includes('<option value="local"'))
+  })
+
+  it('carries the source filter\u2019s purpose in its accessible description', async () => {
+    const { InstalledPanel } = await import('../lib/client/components/InstalledPanel.js')
+    const { TranslateProvider } = await import('../lib/client/translate.js')
+
+    const html = renderToStaticMarkup(
+      React.createElement(TranslateProvider, { t }, React.createElement(InstalledPanel, {
+        items: [installed({})],
+        loading: false, error: null, detail: null, detailLoading: false, detailError: null,
+        file: null, fileLoading: false, fileError: null,
+        onRefresh: () => undefined, onOpen: () => undefined, onCloseDetail: () => undefined,
+        onSelectFile: () => undefined, onRequestRemove: () => undefined,
+      })),
+    )
+
+    assert.match(html, /aria-label="installedFilterSource"/)
+    assert.match(html, /title="installedFilterSourceHint"/)
+  })
+
+  it('narrows the installed list by source, and by search inside it', async () => {
+    // The filter's decision, driven directly. A static render cannot set the
+    // dropdown — `renderToStaticMarkup` runs no handlers — so the pure function is
+    // the only place this behaviour is testable, which is why it exists.
+    const { filterInstalled } = await import('../lib/client/components/InstalledPanel.js')
+
+    const items = [
+      installed({ key: 'a'.repeat(64), id: 'clawhub:alpha', source: 'clawhub', slug: 'alpha', name: 'Alpha' }),
+      installed({ key: 'b'.repeat(64), id: 'skillhub:beta', source: 'skillhub', slug: 'beta', name: 'Beta' }),
+      installed({ key: 'c'.repeat(64), id: 'local:gamma', source: 'local', slug: 'gamma', name: 'Gamma', managed: false }),
+    ]
+    const slugs = (list) => list.map((entry) => entry.slug)
+
+    assert.deepEqual(slugs(filterInstalled(items, 'all', '')), ['alpha', 'beta', 'gamma'])
+    assert.deepEqual(slugs(filterInstalled(items, 'clawhub', '')), ['alpha'])
+    assert.deepEqual(slugs(filterInstalled(items, 'skillhub', '')), ['beta'])
+    assert.deepEqual(slugs(filterInstalled(items, 'local', '')), ['gamma'])
+    assert.deepEqual(slugs(filterInstalled(items, 'clawhub', 'beta')), [], 'the two conditions are an AND')
+    assert.deepEqual(slugs(filterInstalled(items, 'all', '  BETA ')), ['beta'], 'the search still ignores case and padding')
+    assert.deepEqual(slugs(filterInstalled(items, 'local', 'gam')), ['gamma'])
   })
 
   it('throws when a component is used outside the translate provider', async () => {

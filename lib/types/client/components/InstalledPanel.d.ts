@@ -13,6 +13,13 @@
  *    directory by that name.
  */
 import type { InstalledSkillDetail, InstalledSkillRecord, MarketFileContent } from '../api.ts';
+/**
+ * The source to filter the inventory by.
+ *
+ * `'all'` is a UI sentinel, not a registry: `source` on a record is a market
+ * source or the literal `local` for a directory this plugin did not write.
+ */
+type InstalledSourceFilter = 'all' | 'local' | 'clawhub' | 'skillhub';
 export interface InstalledPanelProps {
     items: InstalledSkillRecord[];
     loading: boolean;
@@ -29,5 +36,20 @@ export interface InstalledPanelProps {
     onSelectFile: (path: string) => void;
     onRequestRemove: (key: string) => void;
 }
+/**
+ * The entries a filter and a search term leave visible.
+ *
+ * Extracted from the component because it is the only part of this view with a
+ * decision in it, and a rendered snapshot can only ever prove the unfiltered case:
+ * `renderToStaticMarkup` runs no effects and no event handlers, so nothing in a
+ * static render can select a different source. A pure function is testable, and
+ * the component keeps only the wiring.
+ *
+ * The two conditions are an AND, and the search covers the same fields it always
+ * did — the source filter narrows what the search looks through, rather than
+ * replacing it.
+ */
+export declare function filterInstalled(items: readonly InstalledSkillRecord[], source: InstalledSourceFilter, query: string): InstalledSkillRecord[];
 export declare function InstalledPanel(props: InstalledPanelProps): import("react").JSX.Element;
+export {};
 //# sourceMappingURL=InstalledPanel.d.ts.map
