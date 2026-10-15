@@ -301,6 +301,51 @@ describe('skills-market-hub HTTP surface', () => {
       assert.deepEqual(detail.body.files.map((file) => file.path), ['SKILL.md'])
     })
 
+    it('carries the same removal policy in the detail view as in the row', async () => {
+      // The regression test for 0.1.10. The detail endpoint returned the raw scan
+      // record, whose `removable` was a placeholder `false`, so the detail view's
+      // uninstall button was disabled for every skill behind a tooltip blaming a
+      // configuration that forbade nothing — while the list row beside it offered
+      // the same removal. One policy, two answers.
+      //
+      // The assertion is deliberately about *agreement*, not about the value: a
+      // future change to the default must not be able to satisfy this test on one
+      // endpoint and break the other.
+      const items = (await request(host.base, `${ROUTE_PREFIX}/installed`)).body.items
+      const item = items.find((entry) => entry.dirName === 'handwritten')
+      assert.ok(item, 'the fixture skill must be present')
+
+      const detail = await request(host.base, `${ROUTE_PREFIX}/installed/detail?key=${item.key}`)
+      assert.equal(detail.status, 200)
+      assert.equal(
+        detail.body.item.removable,
+        item.removable,
+        'the detail view and the list row must report the same removal policy',
+      )
+      assert.equal(typeof detail.body.item.removable, 'boolean', 'the policy is always published, never omitted')
+    })
+
+    it('publishes the policy on the record a removal returns', async () => {
+      // The third path that publishes an installed record. It is covered for the
+      // same reason as the other two: the defect was one path out of three, and
+      // nothing was asserting on the two that happened to be correct either.
+      const dir = join(host.skillsRoot, 'removable-one')
+      await mkdir(dir, { recursive: true })
+      await writeFile(join(dir, 'SKILL.md'), '---\nname: removable-one\ndescription: Mine.\n---\n\nBody.\n', 'utf8')
+      await writeFile(
+        join(dir, '.skills-market-hub.json'),
+        JSON.stringify({ id: 'clawhub:removable-one', source: 'clawhub', slug: 'removable-one', installedAt: new Date().toISOString(), files: [] }),
+        'utf8',
+      )
+
+      const items = (await request(host.base, `${ROUTE_PREFIX}/installed`)).body.items
+      const item = items.find((entry) => entry.dirName === 'removable-one')
+      const response = await postJson(host.base, `${ROUTE_PREFIX}/installed/uninstall`, { key: item.key })
+
+      assert.equal(response.status, 200)
+      assert.equal(response.body.item.removable, true)
+    })
+
     it('serves one file by key', async () => {
       const items = (await request(host.base, `${ROUTE_PREFIX}/installed`)).body.items
       const item = items.find((entry) => entry.dirName === 'handwritten')
@@ -338,6 +383,27 @@ describe('skills-market-hub HTTP surface', () => {
       const items = (await request(host.base, `${ROUTE_PREFIX}/installed`)).body.items
       assert.equal(items[0].removable, false)
       await host.close()
+    })
+
+    it('marks the detail view non-removable too, so both agree under a disabled config', async () => {
+      // The other direction of the agreement check. Without it, a fix that made
+      // the detail endpoint always answer `true` would pass the enabled-config
+      // test and quietly offer a button the host refuses.
+      const host = await bootPlugin(plugin, { config: { allowUninstall: false } })
+      try {
+        const dir = join(host.skillsRoot, 'x')
+        await mkdir(dir, { recursive: true })
+        await writeFile(join(dir, 'SKILL.md'), '---\nname: x\n---\n', 'utf8')
+
+        const items = (await request(host.base, `${ROUTE_PREFIX}/installed`)).body.items
+        assert.equal(items[0].removable, false)
+
+        const detail = await request(host.base, `${ROUTE_PREFIX}/installed/detail?key=${items[0].key}`)
+        assert.equal(detail.status, 200)
+        assert.equal(detail.body.item.removable, false)
+      } finally {
+        await host.close()
+      }
     })
   })
 

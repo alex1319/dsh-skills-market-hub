@@ -32,7 +32,7 @@ import {
   uninstallInstalledEntry,
   uninstallMarketSkill,
 } from './skills/install-service.ts'
-import { scanInstalledSkills } from './skills/installed.ts'
+import { publishInstalled, scanInstalledSkills } from './skills/installed.ts'
 import {
   enumQuery,
   optionalQuery,
@@ -287,15 +287,21 @@ export function createRoutes(): Map<string, RouteHandler> {
     // whole job on this tab is to show what is installed *now*, including a skill
     // the user copied in by hand a second ago and excluding one they just deleted.
     // A cached inventory would be wrong in both directions.
+    //
+    // Every endpoint below works with records that already carry the policy: the
+    // publication happens once, here, so no route can hold an unshaped record to
+    // send by accident. That is what the 0.1.10 defect was — the detail view
+    // disabled its uninstall button for every skill, blaming a configuration that
+    // forbade nothing, because one of three publishing paths never attached
+    // `removable` to a record that looked complete without it.
     const scan = async () => {
       const roots = await context.scanRoots()
-      return { roots, items: await scanInstalledSkills(roots) }
+      return { roots, items: publishInstalled(await scanInstalledSkills(roots), context.allowUninstall()) }
     }
 
     if (segments.length === 1) {
       requireMethod(method, 'GET')
-      const { items } = await scan()
-      sendJson(res, 200, { items: items.map((item) => ({ ...item, removable: context.allowUninstall() })) })
+      sendJson(res, 200, { items: (await scan()).items })
       return
     }
 
@@ -303,7 +309,8 @@ export function createRoutes(): Map<string, RouteHandler> {
 
     if (segments.length === 2 && segments[1] === 'detail') {
       requireMethod(method, 'GET')
-      sendJson(res, 200, await readInstalledSkill(roots, requireEntryKey(url.searchParams.get('key'))))
+      const key = requireEntryKey(url.searchParams.get('key'))
+      sendJson(res, 200, await readInstalledSkill(roots, key, { allowUninstall: context.allowUninstall() }))
       return
     }
 

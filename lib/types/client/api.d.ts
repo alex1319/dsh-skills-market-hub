@@ -155,6 +155,16 @@ export interface MarketCategory {
 export interface InstalledSkillRecord {
     key: string;
     linked: boolean;
+    /**
+     * Whether this deployment permits removal at all — `Config.allowUninstall`.
+     *
+     * Always present on a published record and never a statement about ownership: a
+     * hand-written skill arrives `true` and is still refused by the uninstall
+     * endpoint, which is where ownership is judged. A missing value here would read
+     * as "not removable", which is the shape of the 0.1.10 defect — a detail view
+     * that disabled its button for every skill while the row beside it offered the
+     * same removal.
+     */
     removable: boolean;
     id: string;
     source: MarketSource | 'local';

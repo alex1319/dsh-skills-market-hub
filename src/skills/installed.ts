@@ -24,19 +24,46 @@ import {
   skillId,
   type InstalledSkillRecord,
   type MarketSource,
+  type ScannedSkillRecord,
 } from '../market/types.ts'
 
 /** Sidecar file name: the only proof that this plugin installed a directory. */
 export const INSTALL_META_FILE = '.skills-market-hub.json'
 
 /**
- * One installed entry, as the inventory reports it.
+ * One installed entry, as a **scan** reports it: the disk facts, no policy.
  *
  * Re-exported from the wire types rather than declared here: the browser half
- * reads this shape, and a second declaration would be a second thing to keep in
- * step with the JSON the routes actually send.
+ * reads the published shape, and a second declaration would be a second thing to
+ * keep in step with the JSON the routes actually send.
  */
-export type { InstalledSkillRecord }
+export type { InstalledSkillRecord, ScannedSkillRecord }
+
+/**
+ * Attach the deployment's removal policy to one scanned record.
+ *
+ * **The only producer of {@link InstalledSkillRecord}.** Two routes publish an
+ * installed record and a third returns one after a removal; every one of them
+ * goes through here, so "publish a record without the policy" is not a mistake
+ * that can be made — the type it would produce does not exist.
+ *
+ * Ownership is *not* part of this: a hand-written skill is removable here and is
+ * still refused by the uninstall endpoint, which is where ownership is judged.
+ */
+export function publishInstalledRecord(
+  record: ScannedSkillRecord,
+  allowUninstall: boolean,
+): InstalledSkillRecord {
+  return { ...record, removable: allowUninstall }
+}
+
+/** {@link publishInstalledRecord} over a page of the inventory. */
+export function publishInstalled(
+  records: readonly ScannedSkillRecord[],
+  allowUninstall: boolean,
+): InstalledSkillRecord[] {
+  return records.map((record) => publishInstalledRecord(record, allowUninstall))
+}
 
 /** Longest `SKILL.md` read for a headline; a larger file is read only in part. */
 const HEADLINE_READ_BYTES = 32 * 1024
@@ -278,7 +305,7 @@ async function scanRoot(root: string): Promise<Array<ScanEntry & { linked: boole
 }
 
 /** Build one inventory record. */
-async function toRecord(entry: ScanEntry & { linked: boolean }): Promise<InstalledSkillRecord> {
+async function toRecord(entry: ScanEntry & { linked: boolean }): Promise<ScannedSkillRecord> {
   const fallbackName = entry.dirName
   const headline = entry.skillFile === undefined
     ? { name: fallbackName }
@@ -306,9 +333,6 @@ async function toRecord(entry: ScanEntry & { linked: boolean }): Promise<Install
   return {
     key: installedEntryKey(entry.dir),
     linked: entry.linked,
-    // Updated by the route layer from `Config.allowUninstall`, which is where the
-    // policy lives.
-    removable: false,
     id: meta?.id ?? `local:${fallbackName}`,
     source,
     slug,
@@ -333,9 +357,9 @@ async function toRecord(entry: ScanEntry & { linked: boolean }): Promise<Install
  * kept when the same directory is reachable through two of them (a configured
  * root that happens to *be* the harness home, or a symlinked root).
  */
-export async function scanInstalledSkills(roots: readonly string[]): Promise<InstalledSkillRecord[]> {
+export async function scanInstalledSkills(roots: readonly string[]): Promise<ScannedSkillRecord[]> {
   const seen = new Set<string>()
-  const out: InstalledSkillRecord[] = []
+  const out: ScannedSkillRecord[] = []
 
   for (const root of roots) {
     for (const entry of await scanRoot(root)) {
@@ -354,7 +378,7 @@ export async function scanInstalledSkills(roots: readonly string[]): Promise<Ins
 }
 
 /** A lookup over one scan, as the market layer consumes it. */
-export function installedLookupFrom(records: readonly InstalledSkillRecord[]): {
+export function installedLookupFrom(records: readonly ScannedSkillRecord[]): {
   has: (id: string) => boolean
   info: (id: string) => { version?: string; installedAt?: string; dirName: string } | undefined
 } {
@@ -377,7 +401,7 @@ export function installedLookupFrom(records: readonly InstalledSkillRecord[]): {
 export async function findInstalledEntry(
   roots: readonly string[],
   key: string,
-): Promise<InstalledSkillRecord | undefined> {
+): Promise<ScannedSkillRecord | undefined> {
   return (await scanInstalledSkills(roots)).find((record) => record.key === key)
 }
 

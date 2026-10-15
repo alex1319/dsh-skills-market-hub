@@ -541,12 +541,27 @@ describe('installed reads', () => {
   it('reads the document, its raw frontmatter, and its file list', async () => {
     await installMarketSkill('clawhub', 'demo', { skillsRoot: root })
     const key = installedEntryKey(join(root, 'demo'))
-    const detail = await readInstalledSkill([root], key)
+    const detail = await readInstalledSkill([root], key, { allowUninstall: true })
 
     assert.equal(detail.markdown, SKILL_MD)
     assert.equal(detail.frontmatter, 'name: demo\ndescription: A demo skill.')
     assert.deepEqual(detail.files.map((file) => file.path).sort(), ['SKILL.md', 'reference/notes.md'])
     assert.equal(detail.files.find((file) => file.path === 'SKILL.md').language, 'markdown')
+  })
+
+  it('publishes the removal policy it was given with the record it reads', async () => {
+    // `readInstalledSkill` is one of three publishers of an installed record, and
+    // the required parameter is what makes the policy impossible to omit. Both
+    // directions are asserted here because "always true" and "always false" are
+    // each half of the 0.1.10 defect.
+    await installMarketSkill('clawhub', 'demo', { skillsRoot: root })
+    const key = installedEntryKey(join(root, 'demo'))
+
+    const allowed = await readInstalledSkill([root], key, { allowUninstall: true })
+    assert.equal(allowed.item.removable, true)
+
+    const forbidden = await readInstalledSkill([root], key, { allowUninstall: false })
+    assert.equal(forbidden.item.removable, false)
   })
 
   it('reads one file of an installed skill', async () => {
@@ -572,7 +587,7 @@ describe('installed reads', () => {
 
   it('refuses an unknown key', async () => {
     await assert.rejects(
-      readInstalledSkill([root], 'a'.repeat(64)),
+      readInstalledSkill([root], 'a'.repeat(64), { allowUninstall: true }),
       (error) => error.status === 404,
     )
   })

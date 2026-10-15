@@ -199,10 +199,18 @@ export interface InstalledDetail {
  * is now. A cached inventory would hide a skill the user just copied in and keep
  * offering one they just deleted.
  *
+ * `allowUninstall` is required rather than defaulted: this function publishes an
+ * installed record to the browser, and a record published without the policy is
+ * the defect that shipped in 0.1.10 — the detail view's uninstall button was
+ * disabled for every skill, blaming a configuration that forbade nothing. Making
+ * the parameter mandatory means a caller cannot omit it by not thinking about it.
+ *
  * @throws {@link SkillOperationError} when the key matches nothing, or the
  *   document is over the reader's size limit.
  */
-export declare function readInstalledSkill(roots: readonly string[], key: string): Promise<InstalledDetail>;
+export declare function readInstalledSkill(roots: readonly string[], key: string, options: {
+    allowUninstall: boolean;
+}): Promise<InstalledDetail>;
 /**
  * Read one file of an installed skill.
  *

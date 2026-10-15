@@ -1,6 +1,6 @@
 {
   "name": "dsh-skills-market-hub",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "private": true,
   "description": "DSH 技能市场：在 DeepSeek Harness 桌面端侧栏浏览、预览、安装与卸载 ClawHub 与 SkillHub 的第三方技能。",
   "type": "module",

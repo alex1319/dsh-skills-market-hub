@@ -47,7 +47,7 @@ import {
   type RouteContext,
   type WebServerLike,
 } from './web-routes.ts'
-import type { InstalledSkillRecord } from './market/types.ts'
+import type { ScannedSkillRecord } from './market/types.ts'
 
 /** Stable plugin name; also the loader row id declared by `cordis.patch.yml`. */
 export const name = 'skills-market-hub'
@@ -75,7 +75,7 @@ export { Config }
  * compiler's root inference. `scripts/verify.mjs` asserts this literal matches
  * the manifest instead.
  */
-export const PLUGIN_VERSION = '0.1.10'
+export const PLUGIN_VERSION = '0.1.11'
 
 /** Web-server service keys, newest first (older compositions spell it `httpServer`). */
 const WEB_SERVER_KEYS = ['webServer', 'httpServer'] as const
@@ -140,7 +140,7 @@ export function apply(ctx: Context, config?: Partial<SkillsMarketHubConfig>): vo
   setMarketCache(cache)
 
   /** The most recent inventory scan, kept so the list endpoint can answer from it. */
-  let inventory: InstalledSkillRecord[] = []
+  let inventory: ScannedSkillRecord[] = []
 
   /** Rebuild the inventory index and hand it to the market layer. */
   const refreshInstalledIndex = async (): Promise<void> => {

@@ -15,7 +15,7 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { MarketCacheStats } from './market/cache.ts';
-import type { InstalledSkillRecord } from './market/types.ts';
+import type { ScannedSkillRecord } from './market/types.ts';
 /** Path prefix of the whole Skills Market API. */
 export declare const ROUTE_PREFIX = "/api/skills-market-hub";
 /** Structural Web server contract (mirrors `webServer.register`). */
@@ -112,8 +112,13 @@ export interface RouteContext {
     skillsRoot: () => Promise<string>;
     /** Every directory the local inventory is scanned from. */
     scanRoots: () => Promise<string[]>;
-    /** The local inventory, as the last refresh recorded it. */
-    inventory: () => Promise<InstalledSkillRecord[]>;
+    /**
+     * The local inventory, as the last refresh recorded it.
+     *
+     * The scanned shape, not the published one: this is the raw index, and anything
+     * that sends it to a browser must attach the removal policy on the way out.
+     */
+    inventory: () => Promise<ScannedSkillRecord[]>;
     /** Whether removal is permitted at all. */
     allowUninstall: () => boolean;
     /** Rebuild the inventory and settle the harness skill catalog. */

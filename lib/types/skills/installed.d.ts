@@ -13,17 +13,31 @@
  * record of what was written, not a credential. A sidecar whose ledger is damaged
  * still proves ownership; a sidecar with the wrong `id` proves nothing.
  */
-import { type InstalledSkillRecord, type MarketSource } from '../market/types.ts';
+import { type InstalledSkillRecord, type MarketSource, type ScannedSkillRecord } from '../market/types.ts';
 /** Sidecar file name: the only proof that this plugin installed a directory. */
 export declare const INSTALL_META_FILE = ".skills-market-hub.json";
 /**
- * One installed entry, as the inventory reports it.
+ * One installed entry, as a **scan** reports it: the disk facts, no policy.
  *
  * Re-exported from the wire types rather than declared here: the browser half
- * reads this shape, and a second declaration would be a second thing to keep in
- * step with the JSON the routes actually send.
+ * reads the published shape, and a second declaration would be a second thing to
+ * keep in step with the JSON the routes actually send.
  */
-export type { InstalledSkillRecord };
+export type { InstalledSkillRecord, ScannedSkillRecord };
+/**
+ * Attach the deployment's removal policy to one scanned record.
+ *
+ * **The only producer of {@link InstalledSkillRecord}.** Two routes publish an
+ * installed record and a third returns one after a removal; every one of them
+ * goes through here, so "publish a record without the policy" is not a mistake
+ * that can be made — the type it would produce does not exist.
+ *
+ * Ownership is *not* part of this: a hand-written skill is removable here and is
+ * still refused by the uninstall endpoint, which is where ownership is judged.
+ */
+export declare function publishInstalledRecord(record: ScannedSkillRecord, allowUninstall: boolean): InstalledSkillRecord;
+/** {@link publishInstalledRecord} over a page of the inventory. */
+export declare function publishInstalled(records: readonly ScannedSkillRecord[], allowUninstall: boolean): InstalledSkillRecord[];
 /** What the sidecar records. */
 export interface InstalledMeta {
     id: string;
@@ -66,9 +80,9 @@ export declare function installedEntryKey(dir: string): string;
  * kept when the same directory is reachable through two of them (a configured
  * root that happens to *be* the harness home, or a symlinked root).
  */
-export declare function scanInstalledSkills(roots: readonly string[]): Promise<InstalledSkillRecord[]>;
+export declare function scanInstalledSkills(roots: readonly string[]): Promise<ScannedSkillRecord[]>;
 /** A lookup over one scan, as the market layer consumes it. */
-export declare function installedLookupFrom(records: readonly InstalledSkillRecord[]): {
+export declare function installedLookupFrom(records: readonly ScannedSkillRecord[]): {
     has: (id: string) => boolean;
     info: (id: string) => {
         version?: string;
@@ -77,7 +91,7 @@ export declare function installedLookupFrom(records: readonly InstalledSkillReco
     } | undefined;
 };
 /** Resolve one opaque key against a fresh scan. */
-export declare function findInstalledEntry(roots: readonly string[], key: string): Promise<InstalledSkillRecord | undefined>;
+export declare function findInstalledEntry(roots: readonly string[], key: string): Promise<ScannedSkillRecord | undefined>;
 /** One file of an installed skill, as the file tab lists it. */
 export interface InstalledFileEntry {
     path: string;

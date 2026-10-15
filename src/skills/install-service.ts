@@ -44,6 +44,7 @@ import {
   INSTALL_META_FILE,
   findInstalledEntry,
   listEntryFiles,
+  publishInstalledRecord,
   rawFrontmatterText,
   readInstalledMeta,
   scanInstalledSkills,
@@ -746,10 +747,13 @@ export async function uninstallInstalledEntry(
   if (!options.allowUninstall) {
     throw new SkillOperationError(405, 'METHOD_NOT_ALLOWED', 'removing skills is disabled by configuration')
   }
-  const item = (await scanInstalledSkills(roots)).find((entry) => entry.key === key)
-  if (item === undefined) {
+  const scanned = (await scanInstalledSkills(roots)).find((entry) => entry.key === key)
+  if (scanned === undefined) {
     throw new SkillOperationError(404, OPERATION_CODES.notInstalled, 'no installed skill matches that key')
   }
+  // Published from here on, so every return below carries the policy. The check at
+  // the top of this function already proved it is `true`: a `false` one threw.
+  const item = publishInstalledRecord(scanned, options.allowUninstall)
 
   if (item.linked) {
     // A link is someone else's skill reachable from here: removing it means
@@ -856,14 +860,25 @@ export interface InstalledDetail {
  * is now. A cached inventory would hide a skill the user just copied in and keep
  * offering one they just deleted.
  *
+ * `allowUninstall` is required rather than defaulted: this function publishes an
+ * installed record to the browser, and a record published without the policy is
+ * the defect that shipped in 0.1.10 — the detail view's uninstall button was
+ * disabled for every skill, blaming a configuration that forbade nothing. Making
+ * the parameter mandatory means a caller cannot omit it by not thinking about it.
+ *
  * @throws {@link SkillOperationError} when the key matches nothing, or the
  *   document is over the reader's size limit.
  */
-export async function readInstalledSkill(roots: readonly string[], key: string): Promise<InstalledDetail> {
-  const item = await findInstalledEntry(roots, key)
-  if (item === undefined) {
+export async function readInstalledSkill(
+  roots: readonly string[],
+  key: string,
+  options: { allowUninstall: boolean },
+): Promise<InstalledDetail> {
+  const scanned = await findInstalledEntry(roots, key)
+  if (scanned === undefined) {
     throw new SkillOperationError(404, OPERATION_CODES.notInstalled, 'no installed skill matches that key')
   }
+  const item = publishInstalledRecord(scanned, options.allowUninstall)
 
   const isFlat = item.dirPath.toLowerCase().endsWith('.md')
   const skillFile = isFlat ? item.dirPath : nodePath.join(item.dirPath, 'SKILL.md')

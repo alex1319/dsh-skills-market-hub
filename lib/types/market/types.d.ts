@@ -205,12 +205,25 @@ export type MarketCategory = {
     /** Nesting depth; `1` is top level. */
     level: number;
 };
-/** One installed skill as the local inventory reports it. */
-export type InstalledSkillRecord = {
+/**
+ * One installed skill as the **disk** reports it.
+ *
+ * Deliberately has no `removable`. Whether a deployment permits removal is a
+ * policy, not a property of a directory, and a scan cannot know it — so the field
+ * does not belong on the type a scan produces.
+ *
+ * That is the whole point of the split. The field used to live here with a
+ * `removable: false` placeholder and a comment saying the route layer would
+ * overwrite it, and one of the three routes that publish a record did not. The
+ * result was a detail view whose button was permanently disabled behind a tooltip
+ * blaming a configuration that forbade nothing. A placeholder that *looks* like an
+ * answer is worse than a missing field: it fails silently, and it fails in the
+ * direction that reads as intentional.
+ */
+export type ScannedSkillRecord = {
     /** `sha256(absolute path)` — the caller never handles a real path. */
     key: string;
     linked: boolean;
-    removable: boolean;
     /** `source:slug` when the provenance sidecar exists, else `local:<dirName>`. */
     id: string;
     source: MarketSource | 'local';
@@ -227,6 +240,24 @@ export type InstalledSkillRecord = {
     managed: boolean;
     bytes: number;
     fileCount: number;
+};
+/**
+ * One installed skill as the API publishes it: the disk facts plus the policy.
+ *
+ * Built only by `publishInstalledRecord` / `publishInstalled`, which are the only
+ * things that may attach `removable`. Nothing else produces this type, so there is
+ * no way to publish a record that merely *omits* the policy and lets the reader
+ * guess.
+ */
+export type InstalledSkillRecord = ScannedSkillRecord & {
+    /**
+     * Whether this deployment permits removal at all — `Config.allowUninstall`.
+     *
+     * A statement about the configuration, never about ownership: a hand-written
+     * skill is `removable: true` and is still refused by the uninstall endpoint,
+     * which is where ownership is judged.
+     */
+    removable: boolean;
 };
 export type MarketErrorCode = 'MARKET_UPSTREAM_ERROR' | 'MARKET_UPSTREAM_TIMEOUT' | 'MARKET_UPSTREAM_BAD_RESPONSE' | 'MARKET_INSTALL_IN_PROGRESS' | 'MARKET_ALREADY_INSTALLED' | 'MARKET_NOT_INSTALLABLE' | 'MARKET_CHECKSUM_MISMATCH' | 'MARKET_DISK_ERROR' | 'MARKET_NOT_INSTALLED' | 'MARKET_NOT_MANAGED';
 /** Limits applied to one installable skill. */
