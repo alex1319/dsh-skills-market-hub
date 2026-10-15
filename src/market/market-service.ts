@@ -20,13 +20,21 @@
 import { cacheKey, type MarketCache, type MarketCacheStats } from './cache.ts'
 import { dedupeSkills, sortByDownloads } from './dedupe.ts'
 import type { MarketCursor } from './cursor.ts'
+import {
+  buildDiscoverCollections,
+  DISCOVER_NEWEST_POOL_SIZE,
+  DISCOVER_POOL_SIZE,
+} from './discover.ts'
+import { getSourceStatus, baseUrlFor } from './provider-fetch.ts'
 import { categoryVocabulary, ensureCategoryVocabulary } from './taxonomy.ts'
 import { detectMarketLanguage, MARKET_LIMITS, sanitizeDirName, skillId } from './types.ts'
 import type {
+  DiscoverResult,
   InstallState,
   MarketCategory,
   MarketFileContent,
   MarketFileMeta,
+  MarketListOrder,
   MarketListResult,
   MarketSource,
   NormalizedSkill,
@@ -262,7 +270,16 @@ export interface MarketProvider {
    * perfectly installable skill gets refused.
    */
   readonly pinsOwner: boolean
-  list(params: { cursor?: string; limit: number; signal?: AbortSignal }): Promise<{ items: NormalizedSkill[]; nextCursor?: string; total?: number }>
+  /**
+   * One page of this registry's list.
+   *
+   * `order` is a *preference*, and a registry that cannot honour it answers with
+   * its own ranking instead of failing: SkillHub's list endpoint has no sort
+   * parameter at all. A caller that needs a specific ordering must therefore sort
+   * what it got — which is what {@link listDiscoverSkills} does — rather than
+   * assume the page came back in the order it asked for.
+   */
+  list(params: { cursor?: string; limit: number; order?: MarketListOrder; signal?: AbortSignal }): Promise<{ items: NormalizedSkill[]; nextCursor?: string; total?: number }>
   search(params: { q: string; cursor?: string; limit: number; signal?: AbortSignal }): Promise<{ items: NormalizedSkill[]; nextCursor?: string; total?: number }>
   detail(slug: string, params: { owner?: string; signal?: AbortSignal }): Promise<NormalizedSkillDetail>
   listFiles(slug: string, params: { version?: string; owner?: string; signal?: AbortSignal }): Promise<MarketFileMeta[]>
@@ -479,4 +496,121 @@ export async function listMarketCategories(): Promise<{ items: MarketCategory[];
   await ensureCategoryVocabulary()
   const items = [...categoryVocabulary().values()].sort((a, b) => a.sortOrder - b.sortOrder || a.key.localeCompare(b.key))
   return { items, status: { status: 'ok', fromCache: items.length > 0 } }
+}
+
+/**
+ * Read the Discover page: three upstream pages in, five ranked shelves out.
+ *
+ * The three reads are chosen for what only they can supply, not for symmetry:
+ *
+ *   ClawHub `sort=trending` — the registry's own trending index, which is the one
+ *     ordering here that this plugin could not compute for itself;
+ *   ClawHub `sort=newest`    — the same, for recency; a trending page cannot
+ *     answer "what was published this week", because nothing that new trends;
+ *   SkillHub list            — this registry has no sort parameter, so its page is
+ *     what it is, and the ranking layer sorts it locally.
+ *
+ * **A dead registry costs its entries, not the page.** Each read absorbs its own
+ * failure, and only a page where *every* read failed is reported as an error:
+ * Discover with one registry is still a working page, and a shelf that is short
+ * because a registry was down is exactly what the `sources` field is for. Throwing
+ * instead would turn a partial outage into a blank screen.
+ *
+ * ## What is cached, and what is not
+ *
+ * The three **upstream pages** go through the disk cache. Measured against the live
+ * registries, one open of this page costs ~1.3s warm and ~4.1s cold, and the panel
+ * re-reads it every time it is mounted — which, because the sidebar mounts one
+ * panel at a time, means every switch away and back. A cache hit turns that into a
+ * file read.
+ *
+ * The **ranking and the install-state annotation deliberately stay outside it**:
+ * both are cheap pure functions of the pools, and install state is a fact about
+ * *this* disk that changes the moment someone installs or deletes a skill. Caching
+ * the finished shelves would serve a reader a shelf still offering "Install" for
+ * something they installed a minute ago.
+ *
+ * A stale shelf is also the right failure mode here in a way it would not be for an
+ * install: browsing a two-hour-old trending list costs nothing, and the cache
+ * already prefers an expired record over an error when a registry is unreachable.
+ * The panel's Refresh button forces a real re-read.
+ */
+export async function listDiscoverSkills(options: { refresh?: boolean } = {}): Promise<DiscoverResult> {
+  // Before the providers run, so even a first-ever Discover paints words rather
+  // than classification keys. Same trade as the list path: one small request
+  // (measured at 1.5 KB) reused for an hour — and `apply()` warms it at activation,
+  // so in practice it is never on this path at all.
+  await ensureCategoryVocabulary({ ...(options.refresh === true ? { force: true } : {}) })
+
+  const failures: unknown[] = []
+
+  const read = async (source: MarketSource, order: MarketListOrder | undefined, limit: number): Promise<NormalizedSkill[]> => {
+    const target = providers[source]
+    if (target === undefined) return []
+    try {
+      return await readDiscoverPool(
+        source,
+        order,
+        limit,
+        options,
+        () => target.list({ limit, ...(order === undefined ? {} : { order }) }).then((page) => page.items),
+      )
+    } catch (error) {
+      failures.push(error)
+      return []
+    }
+  }
+
+  const [trending, newest, skillhub] = await Promise.all([
+    read('clawhub', 'trending', DISCOVER_POOL_SIZE),
+    read('clawhub', 'newest', DISCOVER_NEWEST_POOL_SIZE),
+    read('skillhub', undefined, DISCOVER_POOL_SIZE),
+  ])
+
+  if (trending.length === 0 && newest.length === 0 && skillhub.length === 0 && failures.length > 0) {
+    throw failures[0]
+  }
+
+  const collections = buildDiscoverCollections({ trending, newest, skillhub })
+    // Annotated *after* ranking, and per shelf rather than per pool: install state
+    // is a fact about this disk, it takes no part in any ranking, and a skill that
+    // appears on two shelves must carry the same answer on both.
+    .map((collection) => ({ ...collection, items: annotatePage(collection.items) }))
+
+  // Read *after* the fetches, unlike the list route's status argument: the whole
+  // point of reporting health here is to explain a shelf that came back short, and
+  // a snapshot taken before the reads would describe the previous request.
+  // `readThrough` marks a cache hit as `cached`, so this doubles as the provenance
+  // of what the reader is looking at.
+  return { collections, sources: getSourceStatus() }
+}
+
+/**
+ * One Discover pool, through the disk cache.
+ *
+ * Keyed on the **base URL** as well as the ordering: the cache directory is shared
+ * across a profile's lifetime and a base URL can change under it (the profile's
+ * settings; a test harness pointing at a local server). Without the URL in the key a
+ * reader who switched registries would be served the previous one's shelves.
+ *
+ * The ordering is in the key for the same reason it is in ClawHub's own cursor:
+ * `trending` and `newest` are different pages over the same catalogue, and one must
+ * never answer for the other.
+ */
+async function readDiscoverPool<T>(
+  source: MarketSource,
+  order: MarketListOrder | undefined,
+  limit: number,
+  options: { refresh?: boolean },
+  load: () => Promise<T>,
+): Promise<T> {
+  if (cache === null) return load()
+  const key = cacheKey('discover-pool', [baseUrlFor(source), order ?? 'default', limit])
+  const read = await cache.readThrough<T>({
+    key,
+    source,
+    ...(options.refresh === true ? { force: true } : {}),
+    load,
+  })
+  return read.value
 }

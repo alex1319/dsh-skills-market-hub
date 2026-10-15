@@ -4,7 +4,7 @@
  * This is the one component that receives the framework's locale seat (`t`),
  * because it is the entry point the slot registered with `locale: NS`. It owns
  * the controller, publishes that seat to the subtree through the translate
- * context, and switches between the two sections.
+ * context, and switches between the three sections.
  *
  * The controller lives in a ref rather than in state: React must not re-create it
  * on a re-render, or every render would cancel the request the previous render
@@ -17,14 +17,55 @@ import { useMarketLocale } from '../locale-store.ts'
 import { Button, SPACE, bodyStyle, headerStyle, shellStyle, subtitleStyle, titleStyle, token } from '../ui.tsx'
 import { MarketList } from '../components/MarketList.tsx'
 import { MarketDetail } from '../components/MarketDetail.tsx'
+import { DiscoverPanel } from '../components/DiscoverPanel.tsx'
 import { InstalledPanel } from '../components/InstalledPanel.tsx'
 import { ConfirmInstallDialog, ConfirmRemoveDialog, NoticeToast } from '../components/Dialogs.tsx'
-import { createMarketController, type MarketController } from '../state.ts'
-import type { MarketSource, NormalizedSkill, SecurityStatus } from '../api.ts'
+import { createMarketController, type MarketController, type MarketState, type SectionFilter } from '../state.ts'
+import type { DiscoverCollectionId, MarketSource, NormalizedSkill, SecurityStatus } from '../api.ts'
 
 /** Props the framework composes onto the `main` entry: the locale seat only. */
 export interface MarketPageProps {
   t: Translate
+}
+
+/**
+ * The section tabs, in reading order.
+ *
+ * The label key is held rather than the translated string so the strip is rebuilt
+ * from a constant instead of from an array literal per render, and so the order
+ * lives in one place: `state.section` names a section, this names where it sits.
+ */
+const SECTION_TABS: ReadonlyArray<{ id: SectionFilter; labelKey: string }> = [
+  { id: 'discover', labelKey: 'tabDiscover' },
+  { id: 'market', labelKey: 'tabMarket' },
+  { id: 'installed', labelKey: 'tabInstalled' },
+]
+
+/**
+ * Which skill a pending install confirmation is about.
+ *
+ * The reader can press Install from three places — a market card, a Discover row,
+ * or the detail page — and the confirmation has to render wherever they are, so the
+ * target is resolved from the state rather than captured at click time.
+ *
+ * Exported and pure because it is the only decision on this wiring path, and a
+ * static render cannot press a button: every panel-level test would pass while the
+ * button did nothing. **That is exactly what happened.** The lookup searched the
+ * market list and the detail page and never the shelves, so pressing Install on
+ * Discover recorded the request correctly and then silently rendered no dialog —
+ * the worst shape of bug, because nothing errors and the click looks ignored. It
+ * was reachable for most readers because the panel opens on Discover while the
+ * market list is now read lazily, leaving `items` empty at the first press.
+ *
+ * The shelves are searched first for that reason: on this panel they are the
+ * likeliest place the click came from.
+ */
+export function installTargetOf(state: MarketState): NormalizedSkill | undefined {
+  const id = state.confirmInstallId
+  if (id === null) return undefined
+  return state.discover.flatMap((collection) => collection.items).find((item) => item.id === id)
+    ?? state.items.find((item) => item.id === id)
+    ?? (state.detail?.id === id ? state.detail : undefined)
 }
 
 /**
@@ -51,15 +92,17 @@ function MarketPanel() {
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot)
   const scrollRef = useRef<HTMLDivElement | null>(null)
 
-  // Load the first page once, and release every pending request on unmount.
+  // Read whatever the opening section needs, and release every pending request on
+  // unmount. Only the opening section is read: the other tabs fetch on first entry,
+  // so a reader who never opens the market list never pays for it.
   useEffect(() => {
-    void controller.load()
+    controller.start()
     return () => { controller.dispose() }
   }, [controller])
 
-  // Read the local inventory when the Installed tab is first opened. Doing it on
-  // entry rather than in the background is deliberate: that tab's whole purpose is
-  // to show what is on disk right now.
+  // The Installed tab's whole purpose is to show what is on disk right now, so it
+  // re-reads on every entry — but only when it is entered empty, because the
+  // controller already re-reads on the transition itself.
   useEffect(() => {
     if (state.section === 'installed' && state.inventory.length === 0 && !state.inventoryLoading) {
       void controller.loadInventory()
@@ -71,10 +114,22 @@ function MarketPanel() {
     void controller.openDetail(skill.id, { owner: skill.author.handle })
   }, [controller])
 
-  const confirmTarget = state.items.find((item) => item.id === state.confirmInstallId)
-    ?? (state.detail?.id === state.confirmInstallId ? state.detail : undefined)
+  const confirmTarget = installTargetOf(state)
   const removeTarget = state.inventory.find((item) => item.key === state.confirmRemoveKey)
     ?? (state.installedDetail?.item.key === state.confirmRemoveKey ? state.installedDetail.item : undefined)
+
+  // Discover and Market share one detail view: both open the same skill and both
+  // return to the shelf or list they came from, which is why closing a detail only
+  // resets `view` and never touches `section`.
+  const showingDetail = state.view.kind === 'detail' && state.section !== 'installed'
+
+  // Whatever the section in front of the reader is currently waiting on. Disabling
+  // refresh while a read is in flight is not cosmetic: Discover's read is three
+  // upstream pages, and a second click while the first is running aborts it and
+  // starts over — the reader would be slowing their own page down.
+  const busy = state.section === 'discover'
+    ? state.discoverLoading
+    : state.section === 'installed' ? state.inventoryLoading : state.loading
 
   return (
     <div style={{ ...shellStyle, position: 'relative' }}>
@@ -83,15 +138,18 @@ function MarketPanel() {
           <h1 style={titleStyle}>{t('title')}</h1>
           <p style={subtitleStyle}>{t('subtitle')}</p>
         </div>
-        <Button onClick={() => { controller.refresh() }}>{t('refresh')}</Button>
+        <Button
+          onClick={() => { controller.refresh() }}
+          disabled={busy}
+          title={busy ? t('loading') : undefined}
+        >
+          {busy ? t('loading') : t('refresh')}
+        </Button>
       </header>
 
       <div style={{ padding: `0 ${SPACE.xl}px ${SPACE.md}px` }}>
         <div role="tablist" style={{ display: 'flex', gap: SPACE.xs, borderBottom: `1px solid ${token.borderL1}` }}>
-          {([
-            { id: 'market' as const, label: t('tabMarket') },
-            { id: 'installed' as const, label: t('tabInstalled') },
-          ]).map((entry) => (
+          {SECTION_TABS.map((entry) => (
             <button
               key={entry.id}
               role="tab"
@@ -110,72 +168,93 @@ function MarketPanel() {
                 fontWeight: state.section === entry.id ? 600 : 400,
               }}
             >
-              {entry.label}
+              {t(entry.labelKey)}
             </button>
           ))}
         </div>
       </div>
 
       <div ref={scrollRef} style={bodyStyle}>
-        {state.section === 'market'
+        {showingDetail
           ? (
-              state.view.kind === 'detail'
-                ? (
-                    <MarketDetail
-                      detail={state.detail}
-                      loading={state.detailLoading}
-                      error={state.detailError}
-                      tab={state.detailTab}
-                      file={state.file}
-                      fileLoading={state.fileLoading}
-                      fileError={state.fileError}
-                      busy={state.detail !== null && state.installingIds.includes(state.detail.id)}
-                      onBack={() => { controller.closeDetail() }}
-                      onSetTab={(tab) => { controller.setDetailTab(tab) }}
-                      onSelectFile={(path) => { void controller.selectMarketFile(path) }}
-                      onInstall={() => {
-                        if (state.detail !== null) controller.requestInstall(state.detail.id, state.detailOwner ?? undefined)
-                      }}
-                      onRetry={() => {
-                        if (state.view.kind === 'detail') void controller.openDetail(state.view.id)
-                      }}
-                    />
-                  )
-                : (
-                    <MarketList
-                      state={state}
-                      scrollRoot={scrollRef}
-                      onOpen={onOpen}
-                      onInstall={(skill) => { controller.requestInstall(skill.id, skill.author.handle) }}
-                      onLoadMore={onLoadMore}
-                      onSearchDraft={(value) => { controller.setSearchDraft(value) }}
-                      onSubmitSearch={() => { controller.submitSearch() }}
-                      onClearFilters={() => { controller.clearFilters() }}
-                      onSetSource={(source: 'all' | MarketSource) => { controller.setFilter({ source }) }}
-                      onSetSecurity={(security: 'all' | SecurityStatus) => { controller.setFilter({ security }) }}
-                      onSetInstalled={(installed: 'all' | 'installed' | 'installable') => { controller.setFilter({ installed }) }}
-                      onRetry={() => { controller.refresh() }}
-                    />
-                  )
-            )
-          : (
-              <InstalledPanel
-                items={state.inventory}
-                loading={state.inventoryLoading}
-                error={state.inventoryError}
-                detail={state.installedDetail}
-                detailLoading={state.installedDetailLoading}
-                detailError={state.installedDetailError}
+              <MarketDetail
+                detail={state.detail}
+                loading={state.detailLoading}
+                error={state.detailError}
+                tab={state.detailTab}
                 file={state.file}
                 fileLoading={state.fileLoading}
                 fileError={state.fileError}
-                onRefresh={() => { void controller.loadInventory() }}
-                onOpen={(key) => { void controller.openInstalledDetail(key) }}
-                onCloseDetail={() => { controller.closeInstalledDetail() }}
-                onSelectFile={(path) => { void controller.selectInstalledFile(path) }}
-                onRequestRemove={(key) => { controller.requestRemove(key) }}
+                busy={state.detail !== null && state.installingIds.includes(state.detail.id)}
+                onBack={() => { controller.closeDetail() }}
+                onSetTab={(tab) => { controller.setDetailTab(tab) }}
+                onSelectFile={(path) => { void controller.selectMarketFile(path) }}
+                onInstall={() => {
+                  if (state.detail !== null) controller.requestInstall(state.detail.id, state.detailOwner ?? undefined)
+                }}
+                onRetry={() => {
+                  if (state.view.kind === 'detail') void controller.openDetail(state.view.id)
+                }}
               />
-            )}
+            )
+          : state.section === 'installed'
+            ? (
+                <InstalledPanel
+                  items={state.inventory}
+                  loading={state.inventoryLoading}
+                  error={state.inventoryError}
+                  detail={state.installedDetail}
+                  detailLoading={state.installedDetailLoading}
+                  detailError={state.installedDetailError}
+                  file={state.file}
+                  fileLoading={state.fileLoading}
+                  fileError={state.fileError}
+                  onRefresh={() => { void controller.loadInventory() }}
+                  onOpen={(key) => { void controller.openInstalledDetail(key) }}
+                  onCloseDetail={() => { controller.closeInstalledDetail() }}
+                  onSelectFile={(path) => { void controller.selectInstalledFile(path) }}
+                  onRequestRemove={(key) => { controller.requestRemove(key) }}
+                />
+              )
+            : state.section === 'discover'
+              ? (
+                  <DiscoverPanel
+                    collections={state.discover}
+                    active={state.discoverActive}
+                    loading={state.discoverLoading}
+                    error={state.discoverError}
+                    installingIds={state.installingIds}
+                    sources={state.discoverSources}
+                    onSelect={(id: DiscoverCollectionId) => { controller.setDiscoverActive(id) }}
+                    onOpen={onOpen}
+                    onInstall={(skill) => { controller.requestInstall(skill.id, skill.author.handle) }}
+                    onRefresh={() => { controller.refresh() }}
+                    // "Find more" hands the reader to the market *and* puts the
+                    // query back in its starting state: arriving from a shelf with
+                    // a stale search box would show them a filtered market they
+                    // never asked for.
+                    onFindMore={() => {
+                      controller.clearFilters()
+                      controller.setSection('market')
+                    }}
+                  />
+                )
+              : (
+                  <MarketList
+                    state={state}
+                    scrollRoot={scrollRef}
+                    onOpen={onOpen}
+                    onInstall={(skill) => { controller.requestInstall(skill.id, skill.author.handle) }}
+                    onLoadMore={onLoadMore}
+                    onSearchDraft={(value) => { controller.setSearchDraft(value) }}
+                    onSubmitSearch={() => { controller.submitSearch() }}
+                    onClearFilters={() => { controller.clearFilters() }}
+                    onSetSource={(source: 'all' | MarketSource) => { controller.setFilter({ source }) }}
+                    onSetSecurity={(security: 'all' | SecurityStatus) => { controller.setFilter({ security }) }}
+                    onSetInstalled={(installed: 'all' | 'installed' | 'installable') => { controller.setFilter({ installed }) }}
+                    onRetry={() => { controller.refresh() }}
+                  />
+                )}
       </div>
 
       {confirmTarget === undefined

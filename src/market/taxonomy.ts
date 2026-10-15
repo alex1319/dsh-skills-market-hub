@@ -122,6 +122,14 @@ export function parseCategoryVocabulary(value: unknown): MarketCategory[] {
 
 let vocabulary = new Map<string, MarketCategory>()
 let fetchedAt = 0
+/**
+ * How many times the vocabulary has been replaced.
+ *
+ * Read by {@link ensureCategoryVocabulary} to decide whether the answer it is
+ * holding is still the one that should win — see the write there for why "whoever
+ * finishes last" is the wrong rule.
+ */
+let generation = 0
 
 /**
  * Replace the vocabulary in force (tests, and the read below).
@@ -134,6 +142,7 @@ let fetchedAt = 0
 export function setCategoryVocabulary(entries: readonly MarketCategory[]): void {
   vocabulary = new Map(entries.map((entry) => [entry.key, entry]))
   fetchedAt = Date.now()
+  generation += 1
 }
 
 /** The vocabulary in force. */
@@ -168,6 +177,7 @@ export function resetCategoryVocabulary(): void {
   vocabulary = new Map()
   fetchedAt = 0
   inFlight = null
+  generation += 1
 }
 
 /**
@@ -195,11 +205,24 @@ export async function ensureCategoryVocabulary(options: { force?: boolean } = {}
       .finally(() => { inFlight = null })
   }
 
+  // Which vocabulary was in force when this read *started*.
+  const startedAt = generation
+
   try {
     const entries = await inFlight
     // An empty parse is not a vocabulary either: priming with it would replace a
     // usable map (from an earlier read or a test) with nothing.
-    if (entries.length > 0) setCategoryVocabulary(entries)
+    if (entries.length === 0) return
+    // **Write only if this read is still the current one.** A read that began when
+    // nothing was loaded can still be in the air when something else fills the map
+    // — the warm-up at activation overlapping a forced refresh, or a test priming
+    // it by hand. Writing unconditionally makes the winner "whoever finished last",
+    // which is the wrong rule: the fresher vocabulary is the one that should
+    // survive, and a slow network answer is by definition the less fresh of the two.
+    //
+    // A forced read is the exception, and the whole point of the flag: the caller
+    // explicitly asked for this answer to replace what is there.
+    if (options.force === true || generation === startedAt) setCategoryVocabulary(entries)
   } catch {
     // Leave whatever was already loaded in place; the cards fall back to keys.
   }

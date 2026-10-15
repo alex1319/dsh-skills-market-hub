@@ -116,6 +116,24 @@ export interface MarketListResult {
     total?: number;
     sources: Record<MarketSource, SourceStatusInfo>;
 }
+/**
+ * One shelf of the Discover page.
+ *
+ * `metric` names the figure the host ranked by, so the panel prints the number
+ * the ranking is actually about: a shelf ranked by installs that showed downloads
+ * would be a claim the host never made.
+ */
+export type DiscoverCollectionId = 'featured' | 'trending' | 'official' | 'newest' | 'installs';
+export type DiscoverMetric = 'downloads' | 'installs' | 'stars' | 'updatedAt';
+export interface DiscoverCollection {
+    id: DiscoverCollectionId;
+    metric: DiscoverMetric;
+    items: NormalizedSkill[];
+}
+export interface DiscoverResult {
+    collections: DiscoverCollection[];
+    sources: Record<MarketSource, SourceStatusInfo>;
+}
 /** One classification in a registry's published vocabulary. */
 export interface MarketCategory {
     key: string;
@@ -207,6 +225,19 @@ export declare function fetchSkillFile(id: string, path: string, signal?: AbortS
 export declare function fetchSourceStatus(signal?: AbortSignal): Promise<Record<MarketSource, SourceStatusInfo>>;
 /** The registries' classification vocabulary, for labelling cards and the filter bar. */
 export declare function fetchCategories(signal?: AbortSignal): Promise<MarketCategory[]>;
+/**
+ * The Discover page: five ranked shelves, each already capped and annotated.
+ *
+ * The only parameter is `refresh`, and that is the contract rather than an
+ * omission: how deep a shelf goes and how the two registries are merged are
+ * properties of the ranking, which lives on the host. The panel renders what it is
+ * given — but it does have to be able to say "not from your cache", because the
+ * host caches the three upstream pages behind this endpoint, and a refresh button
+ * that quietly returned the same shelves would be lying.
+ */
+export declare function fetchDiscover(signal?: AbortSignal, options?: {
+    refresh?: boolean;
+}): Promise<DiscoverResult>;
 /**
  * Every skill DSH can currently see, including directories this plugin did not
  * install (`managed: false`). This is the local index behind the "installed"

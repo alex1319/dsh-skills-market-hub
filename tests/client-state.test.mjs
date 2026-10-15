@@ -271,7 +271,11 @@ describe('search and filters', () => {
     responder = () => ({ items: [], nextCursor: null, sources: {} })
     const controller = new MarketController()
 
-    await controller.load()
+    // The panel opens on Discover, so the market list is entered explicitly — which
+    // is also what proves the tab fetches on first entry.
+    controller.setSection('market')
+    await settle()
+    assert.match(calls[0].path, /\/skills\?/)
     assert.ok(!calls[0].path.includes('refresh='))
 
     controller.refresh()
@@ -414,13 +418,18 @@ describe('installed inventory', () => {
     responder = () => ({ items: [{ key: 'a'.repeat(64), name: 'demo' }] })
     const controller = new MarketController()
 
+    // Counted per endpoint rather than in total: entering the market tab now starts
+    // its own first read, which is a different fact from this one.
+    const inventoryReads = () => calls.filter((call) => /\/installed$/.test(call.path)).length
+
     controller.setSection('installed')
     await settle()
     controller.setSection('market')
+    await settle()
     controller.setSection('installed')
     await settle()
 
-    assert.equal(calls.length, 2, 'the tab exists to show the disk as it is now')
+    assert.equal(inventoryReads(), 2, 'the tab exists to show the disk as it is now')
   })
 
   it('removes an entry and re-reads the inventory', async () => {
@@ -457,6 +466,137 @@ describe('installed inventory', () => {
 
     assert.equal(calls.length, before + 1)
     assert.match(calls[calls.length - 1].path, /\/installed$/)
+  })
+})
+
+describe('discover', () => {
+  /** One shelf, as the host sends it. */
+  const collection = (id, metric, items) => ({ id, metric, items })
+
+  it('opens on Discover and reads the shelves once', async () => {
+    responder = () => ({ collections: [collection('featured', 'downloads', [skill('clawhub:a')])], sources: {} })
+    const controller = new MarketController()
+
+    controller.start()
+    await settle()
+
+    assert.equal(calls.length, 1)
+    assert.match(calls[0].path, /\/discover$/)
+    assert.equal(controller.getSnapshot().discover.length, 1)
+    assert.equal(controller.getSnapshot().discoverActive, 'featured')
+  })
+
+  it('does not ask for the market list until that tab is opened', async () => {
+    responder = (path) => (path.endsWith('/discover')
+      ? { collections: [collection('featured', 'downloads', [])], sources: {} }
+      : { items: [skill('clawhub:a')], nextCursor: null, sources: {} })
+    const controller = new MarketController()
+
+    controller.start()
+    await settle()
+    assert.equal(calls.length, 1, 'a reader who never opens the market never pays for it')
+
+    controller.setSection('market')
+    await settle()
+    assert.equal(calls.length, 2)
+    assert.match(calls[1].path, /\/skills\?/)
+
+    // And a section already answered is not re-read on every visit.
+    controller.setSection('discover')
+    await settle()
+    controller.setSection('market')
+    await settle()
+    assert.equal(calls.length, 2)
+  })
+
+  it('retries a section whose first read failed, instead of caching the failure', async () => {
+    let fail = true
+    responder = () => {
+      if (fail) return { errorStatus: 503, body: { error: { code: 'MARKET_UPSTREAM_ERROR', message: 'down' } } }
+      return { collections: [collection('featured', 'downloads', [skill('clawhub:a')])], sources: {} }
+    }
+    const controller = new MarketController()
+
+    controller.start()
+    await settle()
+    assert.equal(controller.getSnapshot().discoverError, 'down')
+
+    // Re-entering the tab is the reader's retry: the failure is reported, not
+    // remembered as the answer for the rest of the session.
+    fail = false
+    controller.setSection('market')
+    controller.setSection('discover')
+    await settle()
+
+    assert.equal(controller.getSnapshot().discoverError, null)
+    assert.equal(controller.getSnapshot().discover.length, 1)
+  })
+
+  it('keeps the reader\u2019s shelf, and falls back when the host stops offering it', async () => {
+    let shelves = [collection('featured', 'downloads', []), collection('newest', 'updatedAt', [])]
+    responder = () => ({ collections: shelves, sources: {} })
+    const controller = new MarketController()
+
+    controller.start()
+    await settle()
+    controller.setDiscoverActive('newest')
+    assert.equal(controller.getSnapshot().discoverActive, 'newest')
+
+    shelves = [collection('featured', 'downloads', [])]
+    await controller.loadDiscover()
+    assert.equal(controller.getSnapshot().discoverActive, 'featured', 'a shelf that vanished must not stay selected')
+  })
+
+  it('marks a skill installed on the shelf it was installed from', async () => {
+    responder = (path) => {
+      if (path.endsWith('/install')) return { ok: true, installedPath: '/skills/demo', skill: skill('clawhub:demo') }
+      return { collections: [collection('featured', 'downloads', [skill('clawhub:demo')])], sources: {} }
+    }
+    const controller = new MarketController()
+
+    controller.start()
+    await settle()
+    assert.equal(controller.getSnapshot().discover[0].items[0].installState, 'installable')
+
+    controller.requestInstall('clawhub:demo', 'author')
+    await controller.confirmInstall()
+
+    // Without this the shelf keeps offering Install for something already on disk,
+    // and the host answers the second attempt with a 409.
+    assert.equal(controller.getSnapshot().discover[0].items[0].installState, 'installed')
+  })
+
+  it('refreshes Discover rather than the market while that tab is active', async () => {
+    responder = (path) => (path.includes('/discover')
+      ? { collections: [collection('featured', 'downloads', [])], sources: {} }
+      : { items: [], nextCursor: null, sources: {} })
+    const controller = new MarketController()
+
+    controller.start()
+    await settle()
+    const before = calls.length
+
+    controller.refresh()
+    await settle()
+
+    assert.equal(calls.length, before + 1)
+    assert.match(calls[calls.length - 1].path, /\/discover\?refresh=1$/)
+  })
+
+  it('does not ask the host to bypass its cache on the opening read', async () => {
+    // The host caches the three upstream pages, so the first read of a session is
+    // the one that should populate it. Forcing on every open would defeat the cache
+    // entirely — the opposite of what makes this page quick on the second visit.
+    responder = (path) => (path.includes('/discover')
+      ? { collections: [collection('featured', 'downloads', [])], sources: {} }
+      : { items: [], nextCursor: null, sources: {} })
+    const controller = new MarketController()
+
+    controller.start()
+    await settle()
+
+    assert.match(calls[0].path, /\/discover$/)
+    assert.ok(!calls[0].path.includes('refresh='))
   })
 })
 

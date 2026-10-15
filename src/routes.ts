@@ -16,6 +16,7 @@ import { getSourceStatus } from './market/provider-fetch.ts'
 import {
   getMarketFileContent,
   getMarketSkillDetail,
+  listDiscoverSkills,
   listMarketCategories,
   listMarketSkills,
   type InstalledFilter,
@@ -167,6 +168,26 @@ export function createRoutes(): Map<string, RouteHandler> {
   routes.set('categories', async ({ method, res }) => {
     requireMethod(method, 'GET')
     sendJson(res, 200, await listMarketCategories())
+  })
+
+  /**
+   * The Discover page: five ranked shelves, already capped and annotated.
+   *
+   * It takes exactly one parameter, `refresh`, and that is the whole surface. Every
+   * other knob a caller could want — how deep each shelf goes, how wide the pool is,
+   * how the two registries are merged — is a property of the *ranking*, which lives
+   * with the rankings in `market/discover.ts`. Exposing them would invite a caller
+   * to tune a formula it cannot see, and the first client to pass `limit=100` would
+   * turn a curated page into a second, worse market list.
+   *
+   * `refresh` exists because the three upstream pages behind this endpoint are
+   * cached: without a way to say "not from your cache", the panel's refresh button
+   * would re-render the same shelves and present them as fresh — exactly the failure
+   * `parseRefresh` was written to prevent on the list route.
+   */
+  routes.set('discover', async ({ url, method, res }) => {
+    requireMethod(method, 'GET')
+    sendJson(res, 200, await listDiscoverSkills({ refresh: parseRefresh(url) }))
   })
 
   routes.set('skills', async ({ url, method, segments, res }) => {

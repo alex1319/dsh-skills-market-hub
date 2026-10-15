@@ -20,6 +20,16 @@ export declare const token: {
     readonly bgOverlay: "var(--dsw-alias-bg-overlay)";
     readonly borderL1: "var(--dsw-alias-border-l1)";
     readonly borderL2: "var(--dsw-alias-border-l2)";
+    /**
+     * The placeholder wash, and it is its own token for a reason.
+     *
+     * `bgLayer1`/`bgLayer2` are the *surface* colours, and in the light theme both
+     * resolve to pure white — a placeholder painted with them is white on white, which
+     * is to say invisible. That is what this panel's loading skeletons were until it
+     * was rendered and looked at. `bg-skeleton` is the theme's own answer to exactly
+     * this question and reads correctly in both themes.
+     */
+    readonly skeleton: "var(--dsw-alias-bg-skeleton)";
     readonly labelPrimary: "var(--dsw-alias-label-primary)";
     readonly labelSecondary: "var(--dsw-alias-label-secondary)";
     readonly brand: "var(--dsw-alias-brand-primary)";
@@ -122,6 +132,18 @@ export declare function Notice({ title, detail, action }: {
 export declare function Skeleton({ height, count }: {
     height?: number;
     count?: number;
+}): import("react").JSX.Element;
+/**
+ * A line that says work is happening, in words as well as in motion.
+ *
+ * `role="status"` with a polite live region rather than a decorative spinner: a
+ * spinner tells a sighted reader "wait" and tells a screen reader nothing at all.
+ * That matters more here than usual — the Discover page's first paint is three
+ * upstream reads, measured at ~1.3s warm and ~4.1s cold, so this is a state a
+ * reader actually sits in rather than a flicker.
+ */
+export declare function LoadingLine({ label }: {
+    label: string;
 }): import("react").JSX.Element;
 /** Monospace block for source text. */
 export declare function SourceBlock({ text, wrap }: {

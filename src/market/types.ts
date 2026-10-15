@@ -16,6 +16,23 @@ export type MarketSource = 'clawhub' | 'skillhub'
 
 export const MARKET_SOURCES: readonly MarketSource[] = ['clawhub', 'skillhub']
 
+/**
+ * The ranking a caller asks a registry for.
+ *
+ * Not every registry has every ranking, and the ones that do spell them
+ * differently — or not at all. The vocabulary is therefore this plugin's, and a
+ * provider that cannot honour one ignores it rather than failing: a ranking is a
+ * preference, and a caller that gets the default order instead of an error still
+ * gets a usable page.
+ *
+ * `downloads` is the default everywhere and is what the market list pages
+ * through, because it is the one ordering both registries index stably.
+ */
+export type MarketListOrder = 'downloads' | 'installs' | 'stars' | 'trending' | 'newest'
+
+/** The rankings a caller may ask for. */
+export const MARKET_LIST_ORDERS: readonly MarketListOrder[] = ['downloads', 'installs', 'stars', 'trending', 'newest']
+
 export type SecurityStatus = 'verified' | 'benign' | 'unknown' | 'flagged'
 
 export type InstallState = 'installed' | 'installable' | 'not-installable'
@@ -130,6 +147,62 @@ export type MarketListResult = {
   nextCursor: string | null
   /** Matching skills in total, when known. */
   total?: number
+  sources: Record<MarketSource, SourceStatusInfo>
+}
+
+/**
+ * One shelf on the Discover page.
+ *
+ * The id is the *stable* name of the ranking, and is what the panel keys its
+ * tabs by; the panel owns the human label, so a collection can be re-labelled
+ * without the host having to learn a new word.
+ */
+export type DiscoverCollectionId = 'featured' | 'trending' | 'official' | 'newest' | 'installs'
+
+/** The shelves the Discover page renders, in reading order. */
+export const DISCOVER_COLLECTION_IDS: readonly DiscoverCollectionId[] = [
+  'featured',
+  'trending',
+  'official',
+  'newest',
+  'installs',
+]
+
+/**
+ * The one figure a shelf is ranked by, and therefore the one it prints.
+ *
+ * It travels with the collection rather than being inferred by the panel,
+ * because the panel would have to guess wrong in a way the reader cannot see:
+ * "装机最多" and "热门" would both render a download count, and a row that shows
+ * downloads under a heading that ranks by installs is a quiet lie. The host owns
+ * the ranking, so the host names the number.
+ */
+export type DiscoverMetric = 'downloads' | 'installs' | 'stars' | 'updatedAt'
+
+/**
+ * One ranked shelf.
+ *
+ * `items` is already capped, already deduplicated against the other shelves'
+ * pool, and already annotated with install state — a collection is a finished
+ * answer, not a query the panel has to interpret.
+ */
+export type DiscoverCollection = {
+  id: DiscoverCollectionId
+  /** The figure the ranking used, and the one the panel prints beside each row. */
+  metric: DiscoverMetric
+  items: NormalizedSkill[]
+}
+
+/**
+ * Every shelf, plus the health of the registries that fed them.
+ *
+ * `sources` travels with the shelves because Discover reads three upstream pages
+ * at once: a shelf can be short because the registry publishes few matching
+ * skills, or because a registry was unreachable. Without the status the panel
+ * cannot tell those apart, and would report an outage as "nothing here".
+ */
+export type DiscoverResult = {
+  collections: DiscoverCollection[]
   sources: Record<MarketSource, SourceStatusInfo>
 }
 

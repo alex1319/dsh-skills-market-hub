@@ -38,6 +38,7 @@ import {
   skillId,
   type CategoryRef,
   type MarketFileMeta,
+  type MarketListOrder,
   type MarketSource,
   type NormalizedSkill,
   type NormalizedSkillDetail,
@@ -57,6 +58,28 @@ export const CLAWHUB_OWNER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/
 const MAX_PAGE_SIZE = 100
 /** Longest `q` accepted before the request is refused. */
 const MAX_QUERY_LENGTH = 200
+
+/**
+ * This plugin's ranking vocabulary mapped onto the registry's `sort` values.
+ *
+ * Every value here was probed against the live endpoint: `trending`, `newest`,
+ * `installs` and `stars` all answer 200, while a value the registry does not know
+ * (`recent`, `featured`, `official`) answers **400** rather than falling back to
+ * the default. So a wrong spelling would be a hard failure, not a silent
+ * downgrade — which is why the mapping is a closed table and not a template
+ * string.
+ *
+ * `updated` is deliberately unused: the registry offers it, but `newest` is the
+ * ordering the Discover page means by "newly published", and having two
+ * near-identical recency keys would be two names for one shelf.
+ */
+const CLAWHUB_SORTS: Record<MarketListOrder, string> = {
+  downloads: 'downloads',
+  installs: 'installs',
+  stars: 'stars',
+  trending: 'trending',
+  newest: 'newest',
+}
 
 // ── Response shapes ─────────────────────────────────────────────────────────
 
@@ -480,12 +503,14 @@ export const clawhubProvider: MarketProvider = {
   // which skill is meant rather than merely labelling it.
   pinsOwner: true,
 
-  async list({ cursor, limit, signal }) {
+  async list({ cursor, limit, order, signal }) {
     const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, limit))
     const { value } = await providerFetchJson<RawList>(SOURCE, providerUrl(SOURCE, '/api/v1/skills'), {
-      // `sort=downloads` is what the index name in `nextCursor` refers to; changing
-      // it would invalidate a cursor handed out for the previous ordering.
-      query: { limit: pageSize, sort: 'downloads', ...(cursor === undefined ? {} : { cursor }) },
+      // The sort is what the index name inside `nextCursor` refers to, so a cursor
+      // is only ever valid for the ordering that produced it: `listMarketSkills`
+      // pages under the default, and the Discover shelves each read one first page
+      // under their own ordering and never resume it.
+      query: { limit: pageSize, sort: CLAWHUB_SORTS[order ?? 'downloads'], ...(cursor === undefined ? {} : { cursor }) },
       ...(signal === undefined ? {} : { signal }),
     })
 

@@ -26,6 +26,16 @@ export const token = {
   bgOverlay: 'var(--dsw-alias-bg-overlay)',
   borderL1: 'var(--dsw-alias-border-l1)',
   borderL2: 'var(--dsw-alias-border-l2)',
+  /**
+   * The placeholder wash, and it is its own token for a reason.
+   *
+   * `bgLayer1`/`bgLayer2` are the *surface* colours, and in the light theme both
+   * resolve to pure white — a placeholder painted with them is white on white, which
+   * is to say invisible. That is what this panel's loading skeletons were until it
+   * was rendered and looked at. `bg-skeleton` is the theme's own answer to exactly
+   * this question and reads correctly in both themes.
+   */
+  skeleton: 'var(--dsw-alias-bg-skeleton)',
   labelPrimary: 'var(--dsw-alias-label-primary)',
   labelSecondary: 'var(--dsw-alias-label-secondary)',
   brand: 'var(--dsw-alias-brand-primary)',
@@ -273,7 +283,7 @@ export function Skeleton({ height = 74, count = 6 }: { height?: number; count?: 
   return (
     <div style={{ display: 'grid', gap: SPACE.md, gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }} aria-hidden="true">
       {Array.from({ length: count }, (_, index) => (
-        <div key={index} style={surfaceStyle({ height, opacity: 0.6, background: token.bgLayer2 })} />
+        <div key={index} style={surfaceStyle({ height, background: token.skeleton })} />
       ))}
     </div>
   )
@@ -286,8 +296,46 @@ function ensureSkeletonStyle(): void {
   if (document.getElementById(SKELETON_STYLE_ID) !== null) return
   const style = document.createElement('style')
   style.id = SKELETON_STYLE_ID
+  // The slide is switched off under `prefers-reduced-motion`: an indeterminate bar
+  // is decoration, and a reader who has asked the system not to animate things still
+  // gets the sentence beside it.
   style.textContent = '@keyframes smh-pulse{0%,100%{opacity:.45}50%{opacity:.8}}'
+    + '@keyframes smh-slide{0%{transform:translateX(-100%)}100%{transform:translateX(340%)}}'
+    + '@media (prefers-reduced-motion: reduce){.smh-slide{animation:none!important;width:100%!important;opacity:.3}}'
   document.head.appendChild(style)
+}
+
+/**
+ * A line that says work is happening, in words as well as in motion.
+ *
+ * `role="status"` with a polite live region rather than a decorative spinner: a
+ * spinner tells a sighted reader "wait" and tells a screen reader nothing at all.
+ * That matters more here than usual — the Discover page's first paint is three
+ * upstream reads, measured at ~1.3s warm and ~4.1s cold, so this is a state a
+ * reader actually sits in rather than a flicker.
+ */
+export function LoadingLine({ label }: { label: string }) {
+  useEffect(ensureSkeletonStyle, [])
+  return (
+    <div role="status" aria-live="polite" style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm }}>
+      <span style={{ fontSize: 12, color: token.labelSecondary }}>{label}</span>
+      <span
+        aria-hidden="true"
+        style={{ display: 'block', height: 2, borderRadius: 2, background: token.skeleton, overflow: 'hidden' }}
+      >
+        <span
+          className="smh-slide"
+          style={{
+            display: 'block',
+            height: '100%',
+            width: '30%',
+            background: token.brand,
+            animation: 'smh-slide 1.1s ease-in-out infinite',
+          }}
+        />
+      </span>
+    </div>
+  )
 }
 
 /** Monospace block for source text. */

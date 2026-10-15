@@ -18,7 +18,7 @@
  */
 import { type MarketCache, type MarketCacheStats } from './cache.ts';
 import type { MarketCursor } from './cursor.ts';
-import type { InstallState, MarketCategory, MarketFileContent, MarketFileMeta, MarketListResult, MarketSource, NormalizedSkill, NormalizedSkillDetail, NotInstallableReason, SecurityStatus, SourceStatusInfo } from './types.ts';
+import type { DiscoverResult, InstallState, MarketCategory, MarketFileContent, MarketFileMeta, MarketListOrder, MarketListResult, MarketSource, NormalizedSkill, NormalizedSkillDetail, NotInstallableReason, SecurityStatus, SourceStatusInfo } from './types.ts';
 /** What the market layer needs to know about locally installed skills. */
 export interface InstalledLookup {
     /** Whether `source:slug` is present locally. */
@@ -119,9 +119,19 @@ export interface MarketProvider {
      * perfectly installable skill gets refused.
      */
     readonly pinsOwner: boolean;
+    /**
+     * One page of this registry's list.
+     *
+     * `order` is a *preference*, and a registry that cannot honour it answers with
+     * its own ranking instead of failing: SkillHub's list endpoint has no sort
+     * parameter at all. A caller that needs a specific ordering must therefore sort
+     * what it got — which is what {@link listDiscoverSkills} does — rather than
+     * assume the page came back in the order it asked for.
+     */
     list(params: {
         cursor?: string;
         limit: number;
+        order?: MarketListOrder;
         signal?: AbortSignal;
     }): Promise<{
         items: NormalizedSkill[];
@@ -213,4 +223,44 @@ export declare function listMarketCategories(): Promise<{
     items: MarketCategory[];
     status: SourceStatusInfo;
 }>;
+/**
+ * Read the Discover page: three upstream pages in, five ranked shelves out.
+ *
+ * The three reads are chosen for what only they can supply, not for symmetry:
+ *
+ *   ClawHub `sort=trending` — the registry's own trending index, which is the one
+ *     ordering here that this plugin could not compute for itself;
+ *   ClawHub `sort=newest`    — the same, for recency; a trending page cannot
+ *     answer "what was published this week", because nothing that new trends;
+ *   SkillHub list            — this registry has no sort parameter, so its page is
+ *     what it is, and the ranking layer sorts it locally.
+ *
+ * **A dead registry costs its entries, not the page.** Each read absorbs its own
+ * failure, and only a page where *every* read failed is reported as an error:
+ * Discover with one registry is still a working page, and a shelf that is short
+ * because a registry was down is exactly what the `sources` field is for. Throwing
+ * instead would turn a partial outage into a blank screen.
+ *
+ * ## What is cached, and what is not
+ *
+ * The three **upstream pages** go through the disk cache. Measured against the live
+ * registries, one open of this page costs ~1.3s warm and ~4.1s cold, and the panel
+ * re-reads it every time it is mounted — which, because the sidebar mounts one
+ * panel at a time, means every switch away and back. A cache hit turns that into a
+ * file read.
+ *
+ * The **ranking and the install-state annotation deliberately stay outside it**:
+ * both are cheap pure functions of the pools, and install state is a fact about
+ * *this* disk that changes the moment someone installs or deletes a skill. Caching
+ * the finished shelves would serve a reader a shelf still offering "Install" for
+ * something they installed a minute ago.
+ *
+ * A stale shelf is also the right failure mode here in a way it would not be for an
+ * install: browsing a two-hour-old trending list costs nothing, and the cache
+ * already prefers an expired record over an error when a registry is unreachable.
+ * The panel's Refresh button forces a real re-read.
+ */
+export declare function listDiscoverSkills(options?: {
+    refresh?: boolean;
+}): Promise<DiscoverResult>;
 //# sourceMappingURL=market-service.d.ts.map

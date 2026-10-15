@@ -12,7 +12,9 @@
 
 import { after, before, describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdir, readdir, writeFile } from 'node:fs/promises'
+import { createServer } from 'node:http'
+import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { bootPlugin, postJson, request } from './fixtures/host.mjs'
 
@@ -393,6 +395,246 @@ describe('skills-market-hub HTTP surface', () => {
         { key: 'design-media', name: '设计多媒体', nameEn: 'Design & Media', sortOrder: 50, level: 1 },
         { key: 'content-creation', name: '内容创作', nameEn: 'Content Creation', sortOrder: 20, level: 1 },
       ])
+    })
+  })
+
+  describe('the discover endpoint', () => {
+    let host
+
+    before(async () => {
+      // Both registries point at a port nothing listens on. Discover is the one
+      // endpoint that reads three upstream pages at once, so "every source is down"
+      // is the state most likely to turn into a hang or a bodyless failure here.
+      host = await bootPlugin(plugin, {
+        config: {
+          clawhubBaseUrl: 'http://127.0.0.1:9',
+          skillhubBaseUrl: 'http://127.0.0.1:9',
+          timeoutMs: 1_500,
+          requestRetries: 0,
+        },
+      })
+    })
+    after(async () => { await host.close() })
+
+    it('refuses a write with 405 and an Allow header', async () => {
+      const response = await request(host.base, `${ROUTE_PREFIX}/discover`, { method: 'POST' })
+      assert.equal(response.status, 405)
+      assert.equal(response.body.error.code, 'METHOD_NOT_ALLOWED')
+      assert.equal(response.headers.get('allow'), 'GET')
+    })
+
+    it('answers with the documented envelope when no registry can be reached', async () => {
+      const response = await request(host.base, `${ROUTE_PREFIX}/discover`)
+      assert.ok(response.status >= 400, `expected a failure, got ${response.status}`)
+      assert.equal(typeof response.body.error.code, 'string')
+      assert.equal(typeof response.body.error.message, 'string')
+    })
+
+    it('still answers every other endpoint afterwards', async () => {
+      assert.equal((await request(host.base, `${ROUTE_PREFIX}/ping`)).status, 200)
+    })
+  })
+
+  describe('the discover endpoint against a reachable registry', () => {
+    let host
+    let upstream
+    let seen
+    let seedRoot
+
+    before(async () => {
+      seen = []
+      // One local server standing in for both registries: they are addressed by
+      // different paths, so the same socket can answer for each. This is the only
+      // way to assert the *shape* of what Discover serves without letting a live
+      // registry decide whether the test passes.
+      upstream = createServer((req, res) => {
+        seen.push(req.url)
+        const send = (body) => {
+          res.writeHead(200, { 'content-type': 'application/json' })
+          res.end(JSON.stringify(body))
+        }
+        if (req.url.startsWith('/api/v1/categories')) {
+          send({ count: 1, items: [{ key: 'knowledge', name: '知识', nameEn: 'Knowledge', sortOrder: 1, active: true }] })
+          return
+        }
+        if (req.url.startsWith('/api/v1/skills')) {
+          // ClawHub's list shape. Downloads are deliberately *lower* than the
+          // SkillHub entry below while installs are higher, so the assertions can
+          // tell which of the two figures the shelf actually ranked by.
+          send({
+            items: [{
+              ownerHandle: 'wishlad85',
+              slug: 'dev-workflow',
+              displayName: 'Superpowers Dev Workflow',
+              summary: 'A workflow for shipping.',
+              topics: ['automation'],
+              tags: { latest: '1.2.0' },
+              stats: { downloads: 29_400, installs: 1_800, stars: 260 },
+              createdAt: 1_700_000_000_000,
+              updatedAt: 1_790_000_000_000,
+              latestVersion: { version: '1.2.0', createdAt: 1_790_000_000_000, changelog: '', license: 'MIT' },
+              metadata: null,
+            }],
+            nextCursor: null,
+          })
+          return
+        }
+        // SkillHub's list shape, envelope and all.
+        send({
+          code: 0,
+          message: 'success',
+          data: {
+            total: 1,
+            skills: [{
+              slug: 'pdf-toolkit',
+              name: 'PDF 工具箱',
+              description_zh: '读写 PDF。',
+              category: 'knowledge',
+              subCategories: [],
+              downloads: 50_489,
+              installs: 1_490,
+              stars: 66,
+              version: '2.0.0',
+              updated_at: 1_789_000_000_000,
+              created_at: 1_700_000_000_000,
+              ownerName: 'awspace',
+              namespace: { handle: 'awspace', displayName: 'awspace' },
+              labels: { requires_api_key: 'false' },
+              tags: ['pdf'],
+              verified: true,
+              source: 'community',
+            }],
+          },
+        })
+      })
+      await new Promise((resolve) => { upstream.listen(0, '127.0.0.1', resolve) })
+      const { port } = upstream.address()
+
+      // Seeded *before* the plugin activates: the local inventory index is built
+      // once at activation and rebuilt after an install, so a directory dropped in
+      // afterwards would not be in it — and the point of this test is what Discover
+      // does with a skill that is already on disk.
+      //
+      // The provenance sidecar is what makes this the *market* skill: a directory
+      // without one is a hand-written skill, it reports itself as `local:<dir>`, and
+      // the market layer deliberately does not match it against `skillhub:pdf-toolkit`.
+      seedRoot = await mkdtemp(join(tmpdir(), 'smh-discover-skills-'))
+      const seeded = join(seedRoot, 'pdf-toolkit')
+      await mkdir(seeded, { recursive: true })
+      await writeFile(join(seeded, 'SKILL.md'), '---\nname: pdf-toolkit\n---\n', 'utf8')
+      await writeFile(join(seeded, '.skills-market-hub.json'), JSON.stringify({
+        id: 'skillhub:pdf-toolkit',
+        source: 'skillhub',
+        slug: 'pdf-toolkit',
+        owner: 'awspace',
+        version: '2.0.0',
+        installedAt: '2026-01-01T00:00:00.000Z',
+        files: [{ path: 'SKILL.md', sha256: 'a'.repeat(64) }],
+      }), 'utf8')
+
+      host = await bootPlugin(plugin, {
+        skillsRoot: seedRoot,
+        config: {
+          clawhubBaseUrl: `http://127.0.0.1:${port}`,
+          skillhubBaseUrl: `http://127.0.0.1:${port}`,
+          timeoutMs: 5_000,
+          requestRetries: 0,
+        },
+      })
+    })
+
+    after(async () => {
+      await host.close()
+      await new Promise((resolve) => { upstream.close(resolve) })
+      await rm(seedRoot, { recursive: true, force: true })
+      const { resetCategoryVocabulary } = await import('../lib/market/taxonomy.js')
+      resetCategoryVocabulary()
+    })
+
+    it('serves every shelf, already capped and carrying the figure it ranked by', async () => {
+      const response = await request(host.base, `${ROUTE_PREFIX}/discover`)
+
+      assert.equal(response.status, 200)
+      assert.deepEqual(
+        response.body.collections.map((entry) => entry.id),
+        ['featured', 'trending', 'official', 'newest', 'installs'],
+      )
+      for (const collection of response.body.collections) {
+        assert.ok(Array.isArray(collection.items))
+        assert.ok(collection.items.length <= 10, `${collection.id} must be capped`)
+        assert.ok(['downloads', 'installs', 'stars', 'updatedAt'].includes(collection.metric))
+      }
+      assert.ok('clawhub' in response.body.sources && 'skillhub' in response.body.sources)
+    })
+
+    it('merges both registries onto one shelf, ranked by the figure that shelf names', async () => {
+      const response = await request(host.base, `${ROUTE_PREFIX}/discover`)
+      const sources = new Set(response.body.collections.flatMap((entry) => entry.items.map((item) => item.source)))
+
+      assert.ok(sources.has('clawhub') && sources.has('skillhub'), `only saw ${[...sources].join(', ')}`)
+
+      // Both entries are originals, so both belong — and the order proves the
+      // ranking rather than the fixture: by downloads the SkillHub entry leads, by
+      // installs the ClawHub one does, and this shelf ranks by installs.
+      const installs = response.body.collections.find((entry) => entry.id === 'installs')
+      assert.deepEqual(installs.items.map((item) => item.slug), ['dev-workflow', 'pdf-toolkit'])
+      assert.deepEqual(installs.items.map((item) => item.stats.installs), [1_800, 1_490])
+    })
+
+    it('asks ClawHub for the orderings it publishes, and SkillHub for none', async () => {
+      seen.length = 0
+      // `refresh=1` because the three upstream pages are cached: without it this
+      // request would be answered from disk and the server would see nothing at all,
+      // which is the *next* test's subject.
+      await request(host.base, `${ROUTE_PREFIX}/discover?refresh=1`)
+
+      const sorts = seen
+        .filter((url) => url.startsWith('/api/v1/skills'))
+        .map((url) => new URL(url, 'http://x').searchParams.get('sort'))
+        .sort()
+      assert.deepEqual(sorts, ['newest', 'trending'], 'the two ClawHub indices Discover is built on')
+
+      const skillhubReads = seen.filter((url) => url.startsWith('/api/skills'))
+      assert.equal(skillhubReads.length, 1)
+      assert.equal(new URL(skillhubReads[0], 'http://x').searchParams.get('sort'), null)
+    })
+
+    it('answers a second read from cache, and goes back upstream when asked to', async () => {
+      // This page is the panel's landing screen and the sidebar mounts one panel at
+      // a time, so the read happens again on every switch away and back. Measured
+      // against the live registries it costs ~1.3s warm and ~4.1s cold; a cache hit
+      // is the whole difference between that and a file read.
+      await request(host.base, `${ROUTE_PREFIX}/discover?refresh=1`)
+
+      seen.length = 0
+      const cached = await request(host.base, `${ROUTE_PREFIX}/discover`)
+      assert.equal(cached.status, 200)
+      assert.deepEqual(seen, [], 'a plain read must not touch the registries')
+      assert.equal(cached.body.sources.clawhub.status, 'cached', 'and it says where the answer came from')
+
+      seen.length = 0
+      await request(host.base, `${ROUTE_PREFIX}/discover?refresh=1`)
+      assert.ok(seen.some((url) => url.startsWith('/api/v1/skills')), 'a forced read goes back upstream')
+    })
+
+    it('still refuses a malformed refresh flag rather than ignoring it', async () => {
+      const response = await request(host.base, `${ROUTE_PREFIX}/discover?refresh=maybe`)
+      assert.equal(response.status, 400)
+      assert.equal(response.body.error.code, 'BAD_REQUEST')
+    })
+
+    it('annotates a locally present skill on the shelf that carries it', async () => {
+      // Read through `?refresh=1` so the shelves and the annotation are produced by
+      // the same request: the point is that install state is computed *after* the
+      // cache, and a cached shelf must still know what is on this disk.
+      const response = await request(host.base, `${ROUTE_PREFIX}/discover?refresh=1`)
+      const row = response.body.collections
+        .flatMap((entry) => entry.items)
+        .find((item) => item.slug === 'pdf-toolkit')
+
+      assert.ok(row !== undefined, 'the seeded skill must reach a shelf')
+      assert.equal(row.installState, 'installed', 'a shelf must not offer Install for what is on disk')
+      assert.equal(row.installedInfo.dirName, 'pdf-toolkit')
     })
   })
 

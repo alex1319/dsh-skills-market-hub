@@ -16,10 +16,17 @@
  *  - **The installed inventory is read from disk on every entry into the
  *    Installed tab**, because that is the entire point of the tab.
  */
-import { type InstalledSkillDetail, type InstalledSkillRecord, type MarketFileContent, type MarketSource, type NormalizedSkill, type NormalizedSkillDetail, type SecurityStatus, type SourceStatusInfo } from './api.ts';
+import { type DiscoverCollection, type DiscoverCollectionId, type InstalledSkillDetail, type InstalledSkillRecord, type MarketFileContent, type MarketSource, type NormalizedSkill, type NormalizedSkillDetail, type SecurityStatus, type SourceStatusInfo } from './api.ts';
 /** How long the search box waits after the last keystroke. */
 export declare const SEARCH_DEBOUNCE_MS = 350;
-export type SectionFilter = 'market' | 'installed';
+/**
+ * The sections of the panel, in the order the tab strip reads them.
+ *
+ * `discover` is first and is what the panel opens on: the market list answers
+ * "what exists", which is only useful once a reader knows what they are looking
+ * for, whereas Discover answers "what is worth looking at" without one.
+ */
+export type SectionFilter = 'discover' | 'market' | 'installed';
 export type DetailTab = 'overview' | 'files' | 'security' | 'changelog';
 /** What the market body is showing. */
 export type MarketView = {
@@ -39,6 +46,26 @@ export interface MarketState {
     filters: MarketFilters;
     /** Value bound to the search box; committed to `filters.q` after the debounce. */
     searchDraft: string;
+    /**
+     * Discover's shelves, in the host's order.
+     *
+     * Empty until the first read; `discoverError` is what distinguishes "the read
+     * failed" from "the host sent nothing".
+     */
+    discover: DiscoverCollection[];
+    /** Which shelf the reader is looking at. Defaults to the host's first shelf. */
+    discoverActive: DiscoverCollectionId;
+    discoverLoading: boolean;
+    discoverError: string | null;
+    /**
+     * Per-registry health as the *Discover* read saw it.
+     *
+     * Separate from `sources` (which the market list writes) because the two reads
+     * hit the same registries at different moments, and a shelf that came back short
+     * should be explained by the read that produced it — not by a later market list
+     * that happened to succeed.
+     */
+    discoverSources: Record<MarketSource, SourceStatusInfo> | null;
     items: NormalizedSkill[];
     sources: Record<MarketSource, SourceStatusInfo> | null;
     /** Cursor for the next page; `null` while a fetch is in flight or at the end. */
@@ -86,8 +113,20 @@ export declare class MarketController {
     private detailAbort;
     private fileAbort;
     private installedAbort;
+    private discoverAbort;
     private searchTimer;
     private noticeTimer;
+    /**
+     * Which sections have already answered a read.
+     *
+     * The panel opens on Discover, so the market list is no longer fetched on mount
+     * — a reader who never opens that tab never pays for it. That makes "has this
+     * section been read yet" a real question, and it is tracked separately from the
+     * data because an empty *successful* answer is a completed read, while a failed
+     * one must be retried the next time the tab is entered rather than cached as a
+     * blank page for the session.
+     */
+    private readonly loaded;
     /**
      * The author pinned by the confirmation the reader is looking at.
      *
@@ -102,7 +141,28 @@ export declare class MarketController {
     /** Release every pending request and timer. Called when the panel unmounts. */
     dispose(): void;
     private notify;
+    /**
+     * Read whatever the panel's current section needs, once.
+     *
+     * Called on mount rather than from an effect that names a section: the panel
+     * decides what to open on, and duplicating that choice here would be a second
+     * place to keep in step.
+     */
+    start(): void;
     setSection(section: SectionFilter): void;
+    /** Fetch the data a section needs, if it has not already been read. */
+    private enter;
+    /**
+     * Read the shelves. Errors are reported, never thrown at the render path.
+     *
+     * @param options.refresh - ask the host to bypass its cache. The host caches the
+     *   three upstream pages behind this endpoint, so without this a refresh would
+     *   re-render the same shelves while claiming to have gone and looked.
+     */
+    loadDiscover(options?: {
+        refresh?: boolean;
+    }): Promise<void>;
+    setDiscoverActive(id: DiscoverCollectionId): void;
     /** Load (or reload) the first page under the current filters. */
     load(options?: {
         refresh?: boolean;
@@ -122,7 +182,7 @@ export declare class MarketController {
     clearSearch(): void;
     setFilter(patch: Partial<Omit<MarketFilters, 'q'>>): void;
     clearFilters(): void;
-    /** Reload from upstream, bypassing the host's cache. */
+    /** Reload from upstream, bypassing the host's cache where the caller can. */
     refresh(): void;
     openDetail(id: string, options?: {
         owner?: string;

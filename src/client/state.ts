@@ -18,6 +18,7 @@
  */
 
 import {
+  fetchDiscover,
   fetchInstalled,
   fetchInstalledDetail,
   fetchInstalledFile,
@@ -28,6 +29,8 @@ import {
   isAbortError,
   removeInstalled,
   SkillsMarketHubApiError,
+  type DiscoverCollection,
+  type DiscoverCollectionId,
   type InstalledSkillDetail,
   type InstalledSkillRecord,
   type MarketFileContent,
@@ -44,7 +47,14 @@ const PAGE_SIZE = 24
 /** How long the search box waits after the last keystroke. */
 export const SEARCH_DEBOUNCE_MS = 350
 
-export type SectionFilter = 'market' | 'installed'
+/**
+ * The sections of the panel, in the order the tab strip reads them.
+ *
+ * `discover` is first and is what the panel opens on: the market list answers
+ * "what exists", which is only useful once a reader knows what they are looking
+ * for, whereas Discover answers "what is worth looking at" without one.
+ */
+export type SectionFilter = 'discover' | 'market' | 'installed'
 export type DetailTab = 'overview' | 'files' | 'security' | 'changelog'
 
 /** What the market body is showing. */
@@ -64,6 +74,27 @@ export interface MarketState {
   filters: MarketFilters
   /** Value bound to the search box; committed to `filters.q` after the debounce. */
   searchDraft: string
+
+  /**
+   * Discover's shelves, in the host's order.
+   *
+   * Empty until the first read; `discoverError` is what distinguishes "the read
+   * failed" from "the host sent nothing".
+   */
+  discover: DiscoverCollection[]
+  /** Which shelf the reader is looking at. Defaults to the host's first shelf. */
+  discoverActive: DiscoverCollectionId
+  discoverLoading: boolean
+  discoverError: string | null
+  /**
+   * Per-registry health as the *Discover* read saw it.
+   *
+   * Separate from `sources` (which the market list writes) because the two reads
+   * hit the same registries at different moments, and a shelf that came back short
+   * should be explained by the read that produced it — not by a later market list
+   * that happened to succeed.
+   */
+  discoverSources: Record<MarketSource, SourceStatusInfo> | null
 
   items: NormalizedSkill[]
   sources: Record<MarketSource, SourceStatusInfo> | null
@@ -109,9 +140,14 @@ export interface MarketState {
 }
 
 const initialState: MarketState = {
-  section: 'market',
+  section: 'discover',
   filters: { q: '', source: 'all', security: 'all', installed: 'all' },
   searchDraft: '',
+  discover: [],
+  discoverActive: 'featured',
+  discoverLoading: false,
+  discoverError: null,
+  discoverSources: null,
   items: [],
   sources: null,
   nextCursor: null,
@@ -155,8 +191,20 @@ export class MarketController {
   private detailAbort: AbortController | null = null
   private fileAbort: AbortController | null = null
   private installedAbort: AbortController | null = null
+  private discoverAbort: AbortController | null = null
   private searchTimer: ReturnType<typeof setTimeout> | null = null
   private noticeTimer: ReturnType<typeof setTimeout> | null = null
+  /**
+   * Which sections have already answered a read.
+   *
+   * The panel opens on Discover, so the market list is no longer fetched on mount
+   * — a reader who never opens that tab never pays for it. That makes "has this
+   * section been read yet" a real question, and it is tracked separately from the
+   * data because an empty *successful* answer is a completed read, while a failed
+   * one must be retried the next time the tab is entered rather than cached as a
+   * blank page for the session.
+   */
+  private readonly loaded = { discover: false, market: false }
   /**
    * The author pinned by the confirmation the reader is looking at.
    *
@@ -186,6 +234,7 @@ export class MarketController {
     this.detailAbort?.abort()
     this.fileAbort?.abort()
     this.installedAbort?.abort()
+    this.discoverAbort?.abort()
     if (this.searchTimer !== null) clearTimeout(this.searchTimer)
     if (this.noticeTimer !== null) clearTimeout(this.noticeTimer)
     this.listeners.clear()
@@ -200,10 +249,75 @@ export class MarketController {
 
   // ── Section ───────────────────────────────────────────────────────────────
 
+  /**
+   * Read whatever the panel's current section needs, once.
+   *
+   * Called on mount rather than from an effect that names a section: the panel
+   * decides what to open on, and duplicating that choice here would be a second
+   * place to keep in step.
+   */
+  start(): void {
+    this.enter(this.state.section)
+  }
+
   setSection(section: SectionFilter): void {
     if (this.state.section === section) return
     this.commit({ section })
+    this.enter(section)
+  }
+
+  /** Fetch the data a section needs, if it has not already been read. */
+  private enter(section: SectionFilter): void {
+    if (section === 'discover' && !this.loaded.discover) void this.loadDiscover()
+    if (section === 'market' && !this.loaded.market) void this.load()
+    // The installed inventory is read on *every* entry, because that tab's whole
+    // purpose is to show what is on disk right now.
     if (section === 'installed') void this.loadInventory()
+  }
+
+  // ── Discover ──────────────────────────────────────────────────────────────
+
+  /**
+   * Read the shelves. Errors are reported, never thrown at the render path.
+   *
+   * @param options.refresh - ask the host to bypass its cache. The host caches the
+   *   three upstream pages behind this endpoint, so without this a refresh would
+   *   re-render the same shelves while claiming to have gone and looked.
+   */
+  async loadDiscover(options: { refresh?: boolean } = {}): Promise<void> {
+    this.discoverAbort?.abort()
+    const controller = new AbortController()
+    this.discoverAbort = controller
+
+    this.commit({ discoverLoading: true, discoverError: null })
+
+    try {
+      const result = await fetchDiscover(controller.signal, options)
+      if (controller.signal.aborted) return
+      this.loaded.discover = true
+      this.commit({
+        discover: result.collections,
+        // A refresh can drop the shelf the reader was on — the host decides which
+        // shelves exist — so the selection falls back to the first one rather than
+        // pointing at nothing.
+        discoverActive: result.collections.some((entry) => entry.id === this.state.discoverActive)
+          ? this.state.discoverActive
+          : (result.collections[0]?.id ?? this.state.discoverActive),
+        discoverLoading: false,
+        discoverError: null,
+        discoverSources: result.sources,
+      })
+    } catch (error) {
+      if (isAbortError(error) || controller.signal.aborted) return
+      // `loaded` stays false, so re-entering the tab retries instead of showing the
+      // failure for the rest of the session.
+      this.commit({ discoverLoading: false, discoverError: messageOf(error) })
+    }
+  }
+
+  setDiscoverActive(id: DiscoverCollectionId): void {
+    if (this.state.discoverActive === id) return
+    this.commit({ discoverActive: id })
   }
 
   // ── List ──────────────────────────────────────────────────────────────────
@@ -227,6 +341,7 @@ export class MarketController {
     try {
       const result = await fetchMarketList(query, controller.signal, options.refresh === true ? { refresh: true } : {})
       if (controller.signal.aborted) return
+      this.loaded.market = true
       this.commit({
         items: result.items,
         nextCursor: result.nextCursor,
@@ -327,10 +442,14 @@ export class MarketController {
     void this.load()
   }
 
-  /** Reload from upstream, bypassing the host's cache. */
+  /** Reload from upstream, bypassing the host's cache where the caller can. */
   refresh(): void {
     if (this.state.section === 'installed') {
       void this.loadInventory()
+      return
+    }
+    if (this.state.section === 'discover') {
+      void this.loadDiscover({ refresh: true })
       return
     }
     void this.load({ refresh: true })
@@ -449,12 +568,20 @@ export class MarketController {
       this.notify('success', `已安装 ${id}`)
       // Mark the card immediately rather than re-listing: the reader is looking at
       // this card, and a full reload would move it.
+      const asInstalled = (item: NormalizedSkill): NormalizedSkill => (
+        item.id === id
+          ? { ...item, installState: 'installed', installedInfo: { dirName: item.slug } }
+          : item
+      )
       this.commit({
-        items: this.state.items.map((item) => (
-          item.id === id
-            ? { ...item, installState: 'installed' as const, installedInfo: { dirName: item.slug } }
-            : item
-        )),
+        items: this.state.items.map(asInstalled),
+        // Discover is where most installs start now, and a shelf still offering
+        // "Install" for something already on disk would invite a second attempt the
+        // host refuses with a 409.
+        discover: this.state.discover.map((collection) => ({
+          ...collection,
+          items: collection.items.map(asInstalled),
+        })),
         detail: this.state.detail?.id === id
           ? { ...this.state.detail, installState: 'installed' as const, installedInfo: { dirName: this.state.detail.slug } }
           : this.state.detail,

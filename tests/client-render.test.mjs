@@ -126,20 +126,61 @@ describe('client panel render', () => {
     assert.equal(MarketPage, undefined, 'components are not smuggled through the plugin exports')
   })
 
-  it('renders the panel shell with its two sections', async () => {
+  it('renders the panel shell with its three sections, opening on Discover', async () => {
     const { MarketPage: Page } = await import('../lib/client/page/MarketPage.js')
     const html = renderPanel(Page, { t })
 
     // The keys come back verbatim because the test's `t` is the identity, so each
     // assertion below names the exact dictionary entry the UI is reading.
     assert.match(html, /role="tablist"/, 'the section switch renders as a tab list')
+    assert.match(html, /tabDiscover/)
     assert.match(html, /tabMarket/)
     assert.match(html, /tabInstalled/)
     assert.match(html, /refresh/)
+    // Discover is first *and* selected on open: it is the section that answers a
+    // reader who does not yet know what they are looking for.
+    assert.match(html, /aria-selected="true"[^>]*>tabDiscover/)
+  })
+
+  it('renders the market list with its search box and filters when that tab is shown', async () => {
+    // Driven directly rather than through the panel: the panel opens on Discover,
+    // and `renderToStaticMarkup` runs no handlers, so no static render can switch
+    // tabs. The list is the unit under test here, not the tab strip.
+    const { MarketList } = await import('../lib/client/components/MarketList.js')
+    const { TranslateProvider } = await import('../lib/client/translate.js')
+
+    const html = renderToStaticMarkup(
+      React.createElement(TranslateProvider, { t }, React.createElement(MarketList, {
+        state: {
+          section: 'market',
+          filters: { q: '', source: 'all', security: 'all', installed: 'all' },
+          searchDraft: '',
+          items: [skill()],
+          sources: null,
+          nextCursor: null,
+          loading: false,
+          loadingMore: false,
+          error: null,
+          itemStatuses: {},
+          installingIds: [],
+        },
+        scrollRoot: { current: null },
+        onOpen: () => undefined,
+        onInstall: () => undefined,
+        onLoadMore: () => undefined,
+        onSearchDraft: () => undefined,
+        onSubmitSearch: () => undefined,
+        onClearFilters: () => undefined,
+        onSetSource: () => undefined,
+        onSetSecurity: () => undefined,
+        onSetInstalled: () => undefined,
+        onRetry: () => undefined,
+      })),
+    )
+
     assert.match(html, /type="search"/, 'the search field is present')
     assert.match(html, /aria-label="filterSource"/, 'the filter bar is present')
-    // The first section is the market, and it is selected on open.
-    assert.match(html, /aria-selected="true"[^>]*>tabMarket/)
+    assert.match(html, /Demo Skill/)
   })
 
   it('renders a skill card from a normalized record', async () => {
@@ -590,5 +631,303 @@ describe('client panel render', () => {
       ),
       /TranslateProvider/,
     )
+  })
+
+  it('renders the Discover shelves, their rows, and the way out to the market', async () => {
+    const { DiscoverPanel } = await import('../lib/client/components/DiscoverPanel.js')
+    const { TranslateProvider } = await import('../lib/client/translate.js')
+
+    const collections = [
+      { id: 'featured', metric: 'downloads', items: [skill({ name: 'Featured One' })] },
+      { id: 'newest', metric: 'updatedAt', items: [skill({ id: 'clawhub:fresh', slug: 'fresh', name: 'Fresh One', updatedAt: 1_700_000_000_000 })] },
+    ]
+
+    const html = renderToStaticMarkup(
+      React.createElement(TranslateProvider, { t, locale: 'zh' }, React.createElement(DiscoverPanel, {
+        collections,
+        active: 'featured',
+        loading: false,
+        error: null,
+        installingIds: [],
+        sources: null,
+        onSelect: () => undefined,
+        onOpen: () => undefined,
+        onInstall: () => undefined,
+        onRefresh: () => undefined,
+        onFindMore: () => undefined,
+      })),
+    )
+
+    // Every shelf is reachable, not just the selected one.
+    assert.match(html, /discoverFeatured/)
+    assert.match(html, /discoverNewest/)
+    assert.match(html, /Featured One/)
+    // The unselected shelf's row is not on screen — one shelf at a time is the point.
+    assert.ok(!html.includes('Fresh One'))
+    assert.match(html, /@author/, 'the author travels with the name')
+    assert.match(html, /discoverFindMore/, 'the way into the market is always offered')
+  })
+
+  it('prints the figure a shelf ranked by, rather than downloads everywhere', async () => {
+    const { DiscoverPanel } = await import('../lib/client/components/DiscoverPanel.js')
+    const { TranslateProvider } = await import('../lib/client/translate.js')
+
+    const render = (metric) => renderToStaticMarkup(
+      React.createElement(TranslateProvider, { t, locale: 'zh' }, React.createElement(DiscoverPanel, {
+        collections: [{ id: 'newest', metric, items: [skill({ stats: { downloads: 1234, installs: 42, stars: 7 }, updatedAt: 1_700_000_000_000 })] }],
+        active: 'newest',
+        loading: false,
+        error: null,
+        installingIds: [],
+        sources: null,
+        onSelect: () => undefined,
+        onOpen: () => undefined,
+        onInstall: () => undefined,
+        onRefresh: () => undefined,
+        onFindMore: () => undefined,
+      })),
+    )
+
+    // A shelf headed "安装量" that printed a download count would be a claim the host
+    // never made, so the number and its heading both come from the collection.
+    assert.match(render('installs'), /discoverColumnInstalls/)
+    assert.match(render('installs'), /42/)
+    assert.match(render('stars'), /discoverColumnStars/)
+    assert.match(render('stars'), />7</)
+    // A recency shelf shows a date, not an epoch.
+    assert.match(render('updatedAt'), /discoverColumnUpdated/)
+    assert.match(render('updatedAt'), new RegExp(new Date(1_700_000_000_000).toLocaleDateString().replace(/[/]/g, '\\/')))
+  })
+
+  it('announces the first read instead of showing a blank page', async () => {
+    const { DiscoverPanel } = await import('../lib/client/components/DiscoverPanel.js')
+    const { TranslateProvider } = await import('../lib/client/translate.js')
+
+    const html = renderToStaticMarkup(
+      React.createElement(TranslateProvider, { t, locale: 'zh' }, React.createElement(DiscoverPanel, {
+        collections: [],
+        active: 'featured',
+        loading: true,
+        error: null,
+        installingIds: [],
+        sources: null,
+        onSelect: () => undefined,
+        onOpen: () => undefined,
+        onInstall: () => undefined,
+        onRefresh: () => undefined,
+        onFindMore: () => undefined,
+      })),
+    )
+
+    // A live region, not just a spinner: the Discover read is three upstream pages
+    // (~1.3s warm, ~4.1s cold), so this is a state a reader sits in for a while, and
+    // a screen reader has to be told about it in words.
+    assert.match(html, /role="status"/)
+    assert.match(html, /aria-live="polite"/)
+    assert.match(html, /discoverLoading/)
+    // And the placeholder is the shape of the thing that is coming, so the page does
+    // not visibly jump when it arrives.
+    assert.match(html, /smh-slide/, 'the indeterminate bar is there for sighted readers')
+  })
+
+  it('keeps the shelves on screen while a refresh runs, instead of replacing them', async () => {
+    const { DiscoverPanel } = await import('../lib/client/components/DiscoverPanel.js')
+    const { TranslateProvider } = await import('../lib/client/translate.js')
+
+    const html = renderToStaticMarkup(
+      React.createElement(TranslateProvider, { t, locale: 'zh' }, React.createElement(DiscoverPanel, {
+        collections: [{ id: 'featured', metric: 'downloads', items: [skill({ name: 'Still Here' })] }],
+        active: 'featured',
+        loading: true,
+        error: null,
+        installingIds: [],
+        sources: null,
+        onSelect: () => undefined,
+        onOpen: () => undefined,
+        onInstall: () => undefined,
+        onRefresh: () => undefined,
+        onFindMore: () => undefined,
+      })),
+    )
+
+    assert.match(html, /Still Here/, 'the reader keeps the page they were reading')
+    assert.match(html, /role="status"/, 'and is told a newer answer is on its way')
+  })
+
+  it('resolves an install confirmation from wherever the reader pressed Install', async () => {
+    // The gap this closes: the components were tested and the controller was tested,
+    // and the *wiring between them* was not — so a button that recorded the click and
+    // then rendered no dialog passed every test in this file. A static render cannot
+    // press a button, which is why this decision is a pure function.
+    const { installTargetOf } = await import('../lib/client/page/MarketPage.js')
+
+    const shelved = skill({ id: 'clawhub:shelved', slug: 'shelved', name: 'On A Shelf' })
+    const listed = skill({ id: 'clawhub:listed', slug: 'listed', name: 'In The List' })
+    const opened = skill({ id: 'clawhub:opened', slug: 'opened', name: 'Open In Detail' })
+
+    // A Discover-only state, which is what most readers are in when they first press
+    // it: the panel opens on Discover and the market list is read lazily, so `items`
+    // is empty and the detail page was never opened either. This is the exact state
+    // that used to resolve to nothing.
+    assert.equal(
+      installTargetOf({
+        discover: [{ id: 'featured', metric: 'downloads', items: [shelved] }],
+        items: [],
+        detail: null,
+        confirmInstallId: 'clawhub:shelved',
+      })?.name,
+      'On A Shelf',
+    )
+
+    assert.equal(
+      installTargetOf({ discover: [], items: [listed], detail: null, confirmInstallId: 'clawhub:listed' })?.name,
+      'In The List',
+    )
+    assert.equal(
+      installTargetOf({ discover: [], items: [], detail: opened, confirmInstallId: 'clawhub:opened' })?.name,
+      'Open In Detail',
+    )
+
+    // Nothing requested, and a request whose skill is on no surface: both must be
+    // nothing, because rendering a dialog with no skill is the failure mode.
+    assert.equal(installTargetOf({ discover: [], items: [], detail: null, confirmInstallId: null }), undefined)
+    assert.equal(
+      installTargetOf({ discover: [], items: [], detail: null, confirmInstallId: 'clawhub:gone' }),
+      undefined,
+    )
+
+    // A skill sitting on two shelves resolves to the same one skill.
+    assert.equal(
+      installTargetOf({
+        discover: [
+          { id: 'featured', metric: 'downloads', items: [shelved] },
+          { id: 'installs', metric: 'installs', items: [shelved] },
+        ],
+        items: [],
+        detail: null,
+        confirmInstallId: 'clawhub:shelved',
+      })?.id,
+      'clawhub:shelved',
+    )
+  })
+
+  it('shows an unpublished figure as unknown, not as a zero', async () => {
+    const { DiscoverPanel } = await import('../lib/client/components/DiscoverPanel.js')
+    const { TranslateProvider } = await import('../lib/client/translate.js')
+
+    const render = (stats) => renderToStaticMarkup(
+      React.createElement(TranslateProvider, { t, locale: 'zh' }, React.createElement(DiscoverPanel, {
+        collections: [{ id: 'installs', metric: 'installs', items: [skill({ stats })] }],
+        active: 'installs',
+        loading: false,
+        error: null,
+        installingIds: [],
+        sources: null,
+        onSelect: () => undefined,
+        onOpen: () => undefined,
+        onInstall: () => undefined,
+        onRefresh: () => undefined,
+        onFindMore: () => undefined,
+      })),
+    )
+
+    // The registry published a zero: that is its figure, and it is shown.
+    assert.match(render({ downloads: 13, installs: 0 }), />0</)
+    // The registry published nothing: a zero here would turn silence into a claim
+    // that nobody installed it, and the ranking already sorts the two differently.
+    assert.match(render({ downloads: 13 }), />—</)
+    assert.ok(!/aria-label="discoverColumnInstalls 0"/.test(render({ downloads: 13 })))
+  })
+
+  it('renders an empty shelf with the reason instead of hiding it', async () => {
+    const { DiscoverPanel } = await import('../lib/client/components/DiscoverPanel.js')
+    const { TranslateProvider } = await import('../lib/client/translate.js')
+
+    const html = renderToStaticMarkup(
+      React.createElement(TranslateProvider, { t, locale: 'zh' }, React.createElement(DiscoverPanel, {
+        collections: [
+          { id: 'official', metric: 'downloads', items: [] },
+          { id: 'newest', metric: 'updatedAt', items: [] },
+        ],
+        active: 'official',
+        loading: false,
+        error: null,
+        installingIds: [],
+        sources: null,
+        onSelect: () => undefined,
+        onOpen: () => undefined,
+        onInstall: () => undefined,
+        onRefresh: () => undefined,
+        onFindMore: () => undefined,
+      })),
+    )
+
+    assert.match(html, /discoverShelfEmpty/)
+    // Two keys, two jobs: the one-line signpost sits under the tabs, and the full
+    // rule — the thing a reader who doubts the shelf actually wants — appears here,
+    // where they are asking why it is empty.
+    assert.match(html, /discoverOfficialHint/, 'the signpost names the shelf')
+    assert.match(html, /discoverOfficialRule/, 'and the reason is given, not just the absence')
+    // And the shelf is still offered, so its absence is legible rather than silent.
+    assert.match(html, /discoverOfficial/)
+  })
+
+  it('marks a registry-verified row, and says which registry answered badly', async () => {
+    const { DiscoverPanel } = await import('../lib/client/components/DiscoverPanel.js')
+    const { TranslateProvider } = await import('../lib/client/translate.js')
+
+    const html = renderToStaticMarkup(
+      React.createElement(TranslateProvider, { t, locale: 'zh' }, React.createElement(DiscoverPanel, {
+        collections: [{ id: 'official', metric: 'downloads', items: [skill({ verified: true })] }],
+        active: 'official',
+        loading: false,
+        error: null,
+        installingIds: [],
+        sources: { clawhub: { status: 'failed' }, skillhub: { status: 'ok' } },
+        onSelect: () => undefined,
+        onOpen: () => undefined,
+        onInstall: () => undefined,
+        onRefresh: () => undefined,
+        onFindMore: () => undefined,
+      })),
+    )
+
+    assert.match(html, /discoverVerified/)
+    assert.match(html, /discoverDegraded/)
+    assert.match(html, /clawhub/, 'the registry that failed is named')
+  })
+
+  it('reports a failed shelf read without throwing the page away', async () => {
+    const { DiscoverPanel } = await import('../lib/client/components/DiscoverPanel.js')
+    const { TranslateProvider } = await import('../lib/client/translate.js')
+
+    const base = {
+      active: 'featured',
+      loading: false,
+      installingIds: [],
+      sources: null,
+      onSelect: () => undefined,
+      onOpen: () => undefined,
+      onInstall: () => undefined,
+      onRefresh: () => undefined,
+      onFindMore: () => undefined,
+    }
+
+    const failed = renderToStaticMarkup(
+      React.createElement(TranslateProvider, { t, locale: 'zh' }, React.createElement(DiscoverPanel, {
+        ...base, collections: [], error: 'MARKET_UPSTREAM_TIMEOUT',
+      })),
+    )
+    assert.match(failed, /MARKET_UPSTREAM_TIMEOUT/, 'the failure reason reaches the reader')
+    assert.match(failed, /retry/)
+
+    // A refresh that failed while shelves were already on screen keeps them.
+    const stale = renderToStaticMarkup(
+      React.createElement(TranslateProvider, { t, locale: 'zh' }, React.createElement(DiscoverPanel, {
+        ...base, collections: [{ id: 'featured', metric: 'downloads', items: [skill()] }], error: 'down',
+      })),
+    )
+    assert.match(stale, /Demo Skill/)
+    assert.match(stale, /down/)
   })
 })

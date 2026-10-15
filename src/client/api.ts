@@ -107,6 +107,28 @@ export interface MarketListResult {
   sources: Record<MarketSource, SourceStatusInfo>
 }
 
+/**
+ * One shelf of the Discover page.
+ *
+ * `metric` names the figure the host ranked by, so the panel prints the number
+ * the ranking is actually about: a shelf ranked by installs that showed downloads
+ * would be a claim the host never made.
+ */
+export type DiscoverCollectionId = 'featured' | 'trending' | 'official' | 'newest' | 'installs'
+
+export type DiscoverMetric = 'downloads' | 'installs' | 'stars' | 'updatedAt'
+
+export interface DiscoverCollection {
+  id: DiscoverCollectionId
+  metric: DiscoverMetric
+  items: NormalizedSkill[]
+}
+
+export interface DiscoverResult {
+  collections: DiscoverCollection[]
+  sources: Record<MarketSource, SourceStatusInfo>
+}
+
 /** One classification in a registry's published vocabulary. */
 export interface MarketCategory {
   key: string
@@ -334,6 +356,24 @@ export async function fetchSourceStatus(signal?: AbortSignal): Promise<Record<Ma
 export async function fetchCategories(signal?: AbortSignal): Promise<MarketCategory[]> {
   const payload = await getJson<{ items: MarketCategory[]; status: SourceStatusInfo }>('/categories', signal)
   return payload.items
+}
+
+/**
+ * The Discover page: five ranked shelves, each already capped and annotated.
+ *
+ * The only parameter is `refresh`, and that is the contract rather than an
+ * omission: how deep a shelf goes and how the two registries are merged are
+ * properties of the ranking, which lives on the host. The panel renders what it is
+ * given — but it does have to be able to say "not from your cache", because the
+ * host caches the three upstream pages behind this endpoint, and a refresh button
+ * that quietly returned the same shelves would be lying.
+ */
+export function fetchDiscover(
+  signal?: AbortSignal,
+  options: { refresh?: boolean } = {},
+): Promise<DiscoverResult> {
+  const suffix = options.refresh === true ? '?refresh=1' : ''
+  return getJson<DiscoverResult>(`/discover${suffix}`, signal)
 }
 
 /**

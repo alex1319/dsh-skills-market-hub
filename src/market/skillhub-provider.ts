@@ -469,6 +469,13 @@ export const skillhubProvider: MarketProvider = {
     // page as it arrives, and the *client* deduplicates by id so the repeat never
     // reaches the reader as a duplicate card. A caller that needs a strictly
     // disjoint stream has to do the same.
+    //
+    // The `order` argument is **accepted and ignored**: this registry's list
+    // endpoint has no sort parameter at all, and the page it returns is its own
+    // ranking. Refusing the argument instead would make the Discover layer carry a
+    // per-source capability table just to ask a question with one right answer, and
+    // silently substituting a different ordering is impossible here — there is only
+    // one. A caller that needs a specific ranking sorts the page it got.
     const page = Math.max(1, Number.parseInt(cursor ?? '1', 10) || 1)
     const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, limit))
 

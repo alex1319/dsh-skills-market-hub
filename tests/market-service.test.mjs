@@ -19,7 +19,7 @@ import {
   resetInstalledLookup,
   setInstalledLookup,
 } from '../lib/market/market-service.js'
-import { resetCategoryVocabulary, setCategoryVocabulary, CATEGORY_VOCABULARY_PATH } from '../lib/market/taxonomy.js'
+import { resetCategoryVocabulary, setCategoryVocabulary, ensureCategoryVocabulary, CATEGORY_VOCABULARY_PATH } from '../lib/market/taxonomy.js'
 import { configureProviderFetch, resetProviderFetchConfiguration } from '../lib/market/provider-fetch.js'
 import { createServer } from 'node:http'
 import { MARKET_LIMITS, skillId } from '../lib/market/types.js'
@@ -311,6 +311,37 @@ describe('the classification endpoint', () => {
       assert.deepEqual(items.map((entry) => entry.key), ['design-media'])
       assert.equal(items[0].name, '设计多媒体')
       assert.equal(items[0].nameEn, 'Design & Media')
+    } finally {
+      resetProviderFetchConfiguration()
+      await new Promise((resolve) => { server.close(resolve) })
+    }
+  })
+
+  it('does not let a slow read land on top of a vocabulary that replaced it', async () => {
+    // The race this pins, and it is a real one: the plugin warms the vocabulary at
+    // activation, and a read that started when nothing was loaded can still be in
+    // the air when something else fills the map — a forced refresh, or a test that
+    // primes it by hand. Whoever finishes last would otherwise win, which is the
+    // wrong rule: the *fresher* value should win.
+    const server = createServer((req, res) => {
+      setTimeout(() => {
+        res.writeHead(200, { 'content-type': 'application/json' })
+        res.end(JSON.stringify({ count: 1, items: [{ key: 'from-the-wire', name: '网络上来的', sortOrder: 1 }] }))
+      }, 120)
+    })
+    await new Promise((resolve) => { server.listen(0, '127.0.0.1', resolve) })
+    const { port } = server.address()
+    configureProviderFetch({ skillhubBaseUrl: `http://127.0.0.1:${port}`, retries: 0, timeoutMs: 5_000 })
+
+    try {
+      resetCategoryVocabulary()
+      const inFlight = ensureCategoryVocabulary()
+      // Lands while the request is still in the air.
+      setCategoryVocabulary([{ key: 'primed', name: '手工填充', sortOrder: 1, level: 1 }])
+      await inFlight
+
+      const { items } = await listMarketCategories()
+      assert.deepEqual(items.map((entry) => entry.key), ['primed'], 'the newer vocabulary must survive')
     } finally {
       resetProviderFetchConfiguration()
       await new Promise((resolve) => { server.close(resolve) })
