@@ -56,6 +56,32 @@ import {
 const STAGING_PREFIX = '.skills-market-hub-install-'
 /** Prefix of the directory a removal is renamed into before deletion. */
 const TRASH_PREFIX = '.skills-market-hub-trash-'
+/**
+ * Name of the plugin's own working directory, created **beside** the skills root.
+ *
+ * It used to be unnecessary: staging and trash were dot-prefixed directories
+ * *inside* the skills root, on the reasoning that the harness's own scanner skips
+ * dot-prefixed entries. That reasoning was wrong, and the cost was severe.
+ *
+ * DSH discovers skills by listing the skills root and, for every **directory**
+ * entry, resolving `<entry>/SKILL.md`. It tolerates only `ENOENT`/`ENOTDIR` when
+ * that resolution fails. A staging directory whose cleanup failed — which is
+ * exactly what a held handle produces, the same `EPERM` the publish retry exists
+ * for — therefore makes the whole load throw:
+ *
+ *     dsh: fatal load failure: [Error: EPERM: operation not permitted,
+ *       realpath '…\.dsh\skills\.skills-market-hub-install-w4aJou']
+ *
+ * Not "one skill is missing": the harness refuses to start, and every installed
+ * skill disappears from the slash menu. A dot prefix hides an entry from a scan
+ * that reads names; it does not hide it from one that resolves paths.
+ *
+ * So the plugin no longer puts directories in the skills root at all. The work
+ * directory is a sibling of the root, which keeps the publish `rename` on one
+ * volume (still atomic) while leaving the scanned directory holding nothing but
+ * skills.
+ */
+const WORK_DIR_NAME = '.skills-market-hub-work'
 /** Longest accepted relative file path inside a skill. */
 const MAX_FILE_PATH_LENGTH = 512
 /** Longest `SKILL.md` accepted by the installed-detail reader. */
@@ -105,7 +131,7 @@ export const OPERATION_CODES = {
   fileTooLarge: 'FILE_TOO_LARGE',
 } as const
 
-// 鈹€鈹€ Path safety 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ──── Path safety ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
  * Whether a registry-supplied path is safe to join onto a destination.
@@ -138,7 +164,7 @@ export function sha256Hex(content: string): string {
   return createHash('sha256').update(content, 'utf8').digest('hex')
 }
 
-// 鈹€鈹€ Install 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ──── Install ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** Install coordination, keyed by the *normalized directory* a skill would occupy. */
 const inFlight = new Map<string, Promise<unknown>>()
@@ -270,13 +296,23 @@ async function publishStaging(
 }
 
 /**
+ * The plugin's working directory for one skills root.
+ *
+ * A sibling of the root, never inside it — see {@link WORK_DIR_NAME}. Derived
+ * rather than configured so an existing profile needs no migration: the path is
+ * a pure function of the root it belongs to.
+ */
+export function workDirectoryFor(skillsRoot: string): string {
+  return nodePath.join(nodePath.dirname(nodePath.resolve(skillsRoot)), WORK_DIR_NAME)
+}
+
+/**
  * Remove staging directories left behind by earlier attempts.
  *
  * A leftover is not just clutter: it is a directory that the attempt which created
  * it could not delete, which means something on this machine is holding a handle
- * on it. Reporting that is the difference between a user who can repair their
- * skills directory and one who watches the same install fail forever with no
- * explanation.
+ * on it. In the old layout that was also enough to stop the harness from loading
+ * at all, which is why this sweeps the work directory *and* the legacy location.
  *
  * @returns the paths that are still there, so the caller can log them.
  */
@@ -288,19 +324,32 @@ export async function sweepStagingDirectories(
   const fs = publishFs(options.fs)
   const stuck: string[] = []
 
-  let entries
-  try {
-    entries = await nodeFs.readdir(skillsRoot, { withFileTypes: true })
-  } catch {
-    // No skills root yet is not a problem to report: the first install creates it.
-    return stuck
-  }
+  // The legacy location first: a directory here is the shape that can stop the
+  // harness from starting, so it is the one worth clearing before anything else.
+  for (const root of [skillsRoot, workDirectoryFor(skillsRoot)]) {
+    let entries
+    try {
+      entries = await nodeFs.readdir(root, { withFileTypes: true })
+    } catch {
+      // A root that does not exist yet is not a problem to report: the first
+      // install creates it, and an absent work directory is the normal state.
+      continue
+    }
 
-  for (const entry of entries) {
-    if (!entry.isDirectory() || !entry.name.startsWith(STAGING_PREFIX)) continue
-    const target = nodePath.join(skillsRoot, entry.name)
-    if (activeStaging.has(target)) continue
-    if (!await removeBestEffort(fs, target, delay)) stuck.push(target)
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue
+      // In the work directory every entry is ours, so anything there is a
+      // leftover. In the skills root only the two known prefixes are, and nothing
+      // else may be touched — that directory belongs to the user.
+      const ours = root === skillsRoot
+        ? entry.name.startsWith(STAGING_PREFIX) || entry.name.startsWith(TRASH_PREFIX)
+        : true
+      if (!ours) continue
+
+      const target = nodePath.join(root, entry.name)
+      if (activeStaging.has(target)) continue
+      if (!await removeBestEffort(fs, target, delay)) stuck.push(target)
+    }
   }
 
   return stuck
@@ -532,9 +581,13 @@ async function performInstall(
     options.onStuckStaging?.(leftover)
   }
 
-  // Staging inside the destination's own parent makes the publishing `rename` a
-  // same-filesystem operation, which is what makes it atomic.
-  const staging = await nodeFs.mkdtemp(nodePath.join(options.skillsRoot, STAGING_PREFIX))
+  // Staged in the plugin's own work directory, which is a *sibling* of the skills
+  // root: same volume, so the publishing `rename` is still atomic, but the scanned
+  // directory never holds a non-skill entry. See `WORK_DIR_NAME` for what putting
+  // it inside the root cost.
+  const work = workDirectoryFor(options.skillsRoot)
+  await nodeFs.mkdir(work, { recursive: true })
+  const staging = await nodeFs.mkdtemp(nodePath.join(work, STAGING_PREFIX))
   activeStaging.add(staging)
 
   try {
@@ -614,7 +667,7 @@ async function performInstall(
   }
 }
 
-// 鈹€鈹€ Uninstall 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ──── Uninstall ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export interface UninstallOptions {
   skillsRoot: string
@@ -747,7 +800,12 @@ async function removeManagedDirectory(
     })
     .catch(() => ({ name: dirName }))
 
-  const trash = resolveInside(skillsRoot, `${TRASH_PREFIX}${dirName}-${randomUUID()}`)
+  // Renamed into the work directory, not into the skills root: a removal that is
+  // interrupted here must not leave a directory the harness will try to resolve
+  // as a skill. Same volume, so the rename stays atomic.
+  const work = workDirectoryFor(skillsRoot)
+  await nodeFs.mkdir(work, { recursive: true })
+  const trash = nodePath.join(work, `${TRASH_PREFIX}${dirName}-${randomUUID()}`)
   try {
     // The same veto the publish faces: a handle held on the skill directory makes
     // the rename fail with `EPERM` even though nothing is wrong with the request.
@@ -766,7 +824,7 @@ async function removeManagedDirectory(
   return { dir: target, meta, headline }
 }
 
-// 鈹€鈹€ Installed reads 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+// ──── Installed reads ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export interface InstalledDetail {
   item: InstalledSkillRecord

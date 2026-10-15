@@ -16,7 +16,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp, mkdir, readFile, readdir, rename, rm, symlink, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import {
   SkillOperationError,
   installMarketSkill,
@@ -28,6 +28,7 @@ import {
   sweepStagingDirectories,
   uninstallInstalledEntry,
   uninstallMarketSkill,
+  workDirectoryFor,
   resetInstallLocks,
   RENAME_ATTEMPTS,
 } from '../lib/skills/install-service.js'
@@ -739,5 +740,95 @@ describe('publish failures', () => {
     // root at all. "Nothing to sweep" is not an error.
     const stuck = await sweepStagingDirectories(join(root, 'does-not-exist'))
     assert.deepEqual(stuck, [])
+  })
+})
+
+/**
+ * The scanned skills root holds skills and nothing else.
+ *
+ * This is not tidiness, it is the difference between the harness starting and not
+ * starting. DSH discovers skills by listing the root and resolving
+ * `<entry>/SKILL.md` for every **directory** entry, tolerating only
+ * `ENOENT`/`ENOTDIR`. A staging directory whose cleanup failed — the exact shape a
+ * held handle produces, which is what the publish retry exists for — therefore
+ * made the whole load throw:
+ *
+ *     dsh: fatal load failure: [Error: EPERM: operation not permitted,
+ *       realpath '…\.dsh\skills\.skills-market-hub-install-w4aJou']
+ *
+ * The user-visible symptom was not an error about skills: it was every installed
+ * skill silently missing from the slash menu, and the desktop refusing to launch.
+ * A dot prefix hides an entry from a scan that reads names; it does not hide it
+ * from one that resolves paths. So the plugin stages in a sibling work directory
+ * instead, and these tests pin that.
+ */
+describe('the scanned skills root stays clean', () => {
+  it('stages outside the root, and leaves nothing behind after a publish', async () => {
+    const result = await installMarketSkill('clawhub', 'demo', { skillsRoot: root })
+
+    assert.equal(result.installedPath, join(root, 'demo'))
+    // The one assertion that matters: only skills are in the scanned directory.
+    assert.deepEqual((await readdir(root)).sort(), ['demo'], 'the root must hold the skill and nothing else')
+    // The work directory is a sibling, so it is outside everything DSH scans.
+    const work = workDirectoryFor(root)
+    assert.equal(dirname(work), dirname(root), 'the work directory must be a sibling of the root')
+    assert.deepEqual(await readdir(work).catch(() => []), [], 'and empty once the install has finished')
+  })
+
+  it('removes a skill without leaving a directory in the root', async () => {
+    await installMarketSkill('clawhub', 'demo', { skillsRoot: root })
+    await uninstallMarketSkill('clawhub', 'demo', { skillsRoot: root, allowUninstall: true })
+
+    assert.deepEqual(await readdir(root), [], 'an uninstall must leave the scanned root empty')
+  })
+
+  it('sweeps both a legacy root leftover and a work-directory orphan', async () => {
+    // Both layouts at once, because an existing profile has the old one on disk:
+    // the legacy entries are the dangerous shape, and the work directory is the
+    // new home. Neither may be left for the harness to trip over.
+    await mkdir(join(root, '.skills-market-hub-install-legacy'), { recursive: true })
+    await mkdir(join(root, '.skills-market-hub-trash-legacy'), { recursive: true })
+    await mkdir(join(workDirectoryFor(root), '.skills-market-hub-install-orphan'), { recursive: true })
+
+    const stuck = await sweepStagingDirectories(root, { delay: async () => undefined })
+
+    assert.deepEqual(stuck, [])
+    assert.deepEqual(await readdir(root), [], 'the scanned root must come back empty')
+    assert.deepEqual(await readdir(workDirectoryFor(root)), [], 'and so must the work directory')
+  })
+
+  it('never removes anything in the root it did not put there', async () => {
+    // The root belongs to the user. Only the two known prefixes are ours, and a
+    // sweep that guessed wider would delete a hand-written skill.
+    await mkdir(join(root, 'handwritten'), { recursive: true })
+    await writeFile(join(root, 'handwritten', 'SKILL.md'), SKILL_MD, 'utf8')
+    await mkdir(join(root, '.hidden-user-dir'), { recursive: true })
+    await mkdir(join(root, '.skills-market-hub-install-ours'), { recursive: true })
+
+    await sweepStagingDirectories(root, { delay: async () => undefined })
+
+    assert.deepEqual((await readdir(root)).sort(), ['.hidden-user-dir', 'handwritten'])
+  })
+
+  it('reports a legacy leftover it cannot remove, since that one can block startup', async () => {
+    const legacy = join(root, '.skills-market-hub-install-stuck')
+    await mkdir(legacy, { recursive: true })
+    const stuck = []
+
+    await installMarketSkill('clawhub', 'demo', {
+      skillsRoot: root,
+      delay: async () => undefined,
+      fs: {
+        rename: (from, to) => rename(from, to),
+        rm: async (target) => {
+          if (String(target).includes('stuck')) throw lockError('rm', target)
+          return rm(target, { recursive: true, force: true })
+        },
+        exists: async (target) => existsSync(target),
+      },
+      onStuckStaging: (path) => { stuck.push(path) },
+    })
+
+    assert.deepEqual(stuck, [legacy])
   })
 })

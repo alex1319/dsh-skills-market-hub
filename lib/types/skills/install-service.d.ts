@@ -86,13 +86,20 @@ export declare function resetInstallLocks(): void;
  */
 export declare function isTransientLock(error: unknown): boolean;
 /**
+ * The plugin's working directory for one skills root.
+ *
+ * A sibling of the root, never inside it — see {@link WORK_DIR_NAME}. Derived
+ * rather than configured so an existing profile needs no migration: the path is
+ * a pure function of the root it belongs to.
+ */
+export declare function workDirectoryFor(skillsRoot: string): string;
+/**
  * Remove staging directories left behind by earlier attempts.
  *
  * A leftover is not just clutter: it is a directory that the attempt which created
  * it could not delete, which means something on this machine is holding a handle
- * on it. Reporting that is the difference between a user who can repair their
- * skills directory and one who watches the same install fail forever with no
- * explanation.
+ * on it. In the old layout that was also enough to stop the harness from loading
+ * at all, which is why this sweeps the work directory *and* the legacy location.
  *
  * @returns the paths that are still there, so the caller can log them.
  */
