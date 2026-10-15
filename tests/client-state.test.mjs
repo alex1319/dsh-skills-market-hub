@@ -435,7 +435,13 @@ describe('installed inventory', () => {
   it('removes an entry and re-reads the inventory', async () => {
     let inventoryCalls = 0
     responder = (path) => {
-      if (path.endsWith('/installed/uninstall')) return { ok: true, removedPath: '/skills/demo', item: { key: 'a'.repeat(64) } }
+      if (path.endsWith('/installed/uninstall')) {
+        return {
+          ok: true,
+          removedPath: '/skills/demo',
+          item: { key: 'a'.repeat(64), id: 'clawhub:demo', source: 'clawhub', slug: 'demo', managed: true },
+        }
+      }
       inventoryCalls += 1
       return { items: inventoryCalls === 1 ? [{ key: 'a'.repeat(64), name: 'demo' }] : [] }
     }
@@ -564,6 +570,63 @@ describe('discover', () => {
     // Without this the shelf keeps offering Install for something already on disk,
     // and the host answers the second attempt with a 409.
     assert.equal(controller.getSnapshot().discover[0].items[0].installState, 'installed')
+  })
+
+  it('clears the installed mark on every view when the skill is removed', async () => {
+    // The reported defect, and the mirror of the test above. A removal refreshed
+    // only the inventory, so the shelf the reader was looking at kept saying
+    // 已安装 for a skill that was gone — and stayed wrong until the panel was
+    // closed and reopened, because closing it was the only thing that rebuilt
+    // these copies.
+    //
+    // Three views hold their own copy of the same skill, so all three are
+    // asserted: a fix that patched the shelf but not the market list would pass a
+    // narrower test while leaving the same bug one tab away.
+    const onDisk = { ...skill('clawhub:demo'), installState: 'installed', installedInfo: { dirName: 'demo' } }
+    responder = (path) => {
+      if (path.endsWith('/installed/uninstall')) {
+        return {
+          ok: true,
+          removedPath: '/skills/demo',
+          item: { key: 'a'.repeat(64), id: 'clawhub:demo', source: 'clawhub', slug: 'demo', managed: true },
+        }
+      }
+      if (path.includes('/installed')) return { items: [] }
+      if (path.endsWith('/discover')) {
+        return { collections: [collection('featured', 'downloads', [onDisk])], sources: {} }
+      }
+      if (path.includes('/skills/')) {
+        return { skill: { ...onDisk, description: '', files: [], totalSize: 0 }, sourceStatus: { status: 'ok' } }
+      }
+      return { items: [onDisk], nextCursor: null, sources: {} }
+    }
+    const controller = new MarketController()
+
+    controller.start()
+    await settle()
+    controller.setSection('market')
+    await settle()
+    await controller.openDetail('clawhub:demo')
+    await settle()
+
+    const before = controller.getSnapshot()
+    assert.equal(before.discover[0].items[0].installState, 'installed')
+    assert.equal(before.items[0].installState, 'installed')
+    assert.equal(before.detail.installState, 'installed')
+
+    controller.requestRemove('a'.repeat(64))
+    await controller.confirmRemove()
+    await settle()
+
+    const after = controller.getSnapshot()
+    assert.equal(after.discover[0].items[0].installState, 'installable', 'the shelf must stop claiming it is installed')
+    assert.equal(after.items[0].installState, 'installable', 'and so must the market list')
+    assert.equal(after.detail.installState, 'installable', 'and the open detail')
+    assert.equal(
+      after.discover[0].items[0].installedInfo,
+      undefined,
+      'a card must not keep naming a directory that no longer exists',
+    )
   })
 
   it('refreshes Discover rather than the market while that tab is active', async () => {

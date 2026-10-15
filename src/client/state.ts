@@ -31,6 +31,7 @@ import {
   SkillsMarketHubApiError,
   type DiscoverCollection,
   type DiscoverCollectionId,
+  type InstallState,
   type InstalledSkillDetail,
   type InstalledSkillRecord,
   type MarketFileContent,
@@ -536,6 +537,51 @@ export class MarketController {
 
   // ── Install ───────────────────────────────────────────────────────────────
 
+  /**
+   * Apply one skill's new install state everywhere the panel is showing it.
+   *
+   * **Three views hold their own copy of the same skill** — the market list, the
+   * discover shelves, and the open detail — and each renders its install
+   * affordance from that copy. So an install or a removal has to reach all three,
+   * and the two operations have to agree about that, because the failure is
+   * invisible from where the reader is standing:
+   *
+   *   - patching only the list leaves a shelf offering "Install" for something
+   *     already on disk, which the host then refuses with a 409;
+   *   - patching only on install leaves a shelf showing "Installed" for something
+   *     that is gone — the reported defect, which stayed wrong until the panel was
+   *     closed and reopened, because closing it was the only thing that rebuilt
+   *     these copies.
+   *
+   * `installedInfo` is dropped when the skill stops being installed, so no card
+   * can keep naming a directory that no longer exists.
+   *
+   * @param id - `source:slug`, or `local:<dirName>` for an entry no registry owns.
+   *   An id no view holds is a no-op, which is the correct outcome for a removal
+   *   of a hand-written skill.
+   */
+  private applyInstallState(id: string, next: InstallState): void {
+    const retarget = <T extends NormalizedSkill>(item: T): T => {
+      if (item.id !== id) return item
+      const { installedInfo, ...rest } = item
+      // The spread keeps every field of `T`, and both rewritten keys are declared
+      // on `NormalizedSkill` — so the result really is a `T`. TypeScript cannot
+      // follow a rest spread through a generic parameter, hence the assertion.
+      return (next === 'installed'
+        ? { ...rest, installState: next, installedInfo: { dirName: installedInfo?.dirName ?? item.slug } }
+        : { ...rest, installState: next }) as T
+    }
+
+    this.commit({
+      items: this.state.items.map(retarget),
+      discover: this.state.discover.map((collection) => ({
+        ...collection,
+        items: collection.items.map(retarget),
+      })),
+      detail: this.state.detail === null ? null : retarget(this.state.detail),
+    })
+  }
+
   /** Ask for confirmation before writing anything to disk. */
   requestInstall(id: string, owner?: string): void {
     this.pendingOwner = owner ?? null
@@ -568,25 +614,10 @@ export class MarketController {
       this.notify('success', `已安装 ${id}`)
       // Mark the card immediately rather than re-listing: the reader is looking at
       // this card, and a full reload would move it.
-      const asInstalled = (item: NormalizedSkill): NormalizedSkill => (
-        item.id === id
-          ? { ...item, installState: 'installed', installedInfo: { dirName: item.slug } }
-          : item
-      )
       this.commit({
-        items: this.state.items.map(asInstalled),
-        // Discover is where most installs start now, and a shelf still offering
-        // "Install" for something already on disk would invite a second attempt the
-        // host refuses with a 409.
-        discover: this.state.discover.map((collection) => ({
-          ...collection,
-          items: collection.items.map(asInstalled),
-        })),
-        detail: this.state.detail?.id === id
-          ? { ...this.state.detail, installState: 'installed' as const, installedInfo: { dirName: this.state.detail.slug } }
-          : this.state.detail,
         installingIds: this.state.installingIds.filter((candidate) => candidate !== id),
       })
+      this.applyInstallState(id, 'installed')
     } catch (error) {
       this.commit({ installingIds: this.state.installingIds.filter((candidate) => candidate !== id) })
       this.notify('error', messageOf(error))
@@ -670,9 +701,13 @@ export class MarketController {
     this.commit({ confirmRemoveKey: null })
 
     try {
-      await removeInstalled(key)
+      const { item } = await removeInstalled(key)
       this.notify('success', '已卸载')
       this.commit({ installedDetail: null })
+      // The id comes from the removal itself rather than from the row that asked
+      // for it: this is the record the host actually acted on, which is what the
+      // other views are showing a copy of.
+      this.applyInstallState(item.id, 'installable')
       await this.loadInventory()
     } catch (error) {
       this.notify('error', messageOf(error))

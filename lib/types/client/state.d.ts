@@ -192,6 +192,30 @@ export declare class MarketController {
     setDetailTab(tab: DetailTab): void;
     /** Load one file of the skill currently open in the detail view. */
     selectMarketFile(path: string): Promise<void>;
+    /**
+     * Apply one skill's new install state everywhere the panel is showing it.
+     *
+     * **Three views hold their own copy of the same skill** — the market list, the
+     * discover shelves, and the open detail — and each renders its install
+     * affordance from that copy. So an install or a removal has to reach all three,
+     * and the two operations have to agree about that, because the failure is
+     * invisible from where the reader is standing:
+     *
+     *   - patching only the list leaves a shelf offering "Install" for something
+     *     already on disk, which the host then refuses with a 409;
+     *   - patching only on install leaves a shelf showing "Installed" for something
+     *     that is gone — the reported defect, which stayed wrong until the panel was
+     *     closed and reopened, because closing it was the only thing that rebuilt
+     *     these copies.
+     *
+     * `installedInfo` is dropped when the skill stops being installed, so no card
+     * can keep naming a directory that no longer exists.
+     *
+     * @param id - `source:slug`, or `local:<dirName>` for an entry no registry owns.
+     *   An id no view holds is a no-op, which is the correct outcome for a removal
+     *   of a hand-written skill.
+     */
+    private applyInstallState;
     /** Ask for confirmation before writing anything to disk. */
     requestInstall(id: string, owner?: string): void;
     cancelInstall(): void;

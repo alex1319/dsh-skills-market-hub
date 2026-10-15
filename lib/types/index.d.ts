@@ -39,7 +39,7 @@ export { Config };
  * compiler's root inference. `scripts/verify.mjs` asserts this literal matches
  * the manifest instead.
  */
-export declare const PLUGIN_VERSION = "0.1.11";
+export declare const PLUGIN_VERSION = "0.1.12";
 /**
  * Activate the plugin.
  *
