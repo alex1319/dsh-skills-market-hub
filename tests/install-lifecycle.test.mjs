@@ -169,6 +169,57 @@ describe('install lifecycle', () => {
     assert.deepEqual(await readdir(root), [])
   })
 
+  it('refuses a SKILL.md the harness would never list, and publishes nothing', async () => {
+    // The real defect this guards. SkillHub published a skill whose description
+    // read `… Use when: (1) …`; a plain YAML scalar may not contain ": ", so the
+    // harness's parser threw and the skill was dropped at discovery time. The
+    // install reported success, and the slash menu stayed empty with nothing to
+    // explain why. Refusing is the only honest outcome: the bytes would have been
+    // written and never read.
+    const broken = [
+      '---',
+      'name: a-stock-analysis',
+      'description: A股实时行情。Use when: (1) 查询行情, (2) 分析主力动向。',
+      '---',
+      '',
+      '# 股票分析',
+    ].join('\n')
+    const files = [{ path: 'SKILL.md', size: Buffer.byteLength(broken), sha256: sha256Hex(broken) }]
+    setProviders({ clawhub: stubProvider({ files, contents: { 'SKILL.md': broken } }) })
+
+    await assert.rejects(
+      installMarketSkill('clawhub', 'demo', { skillsRoot: root }),
+      (error) => {
+        assert.ok(error instanceof SkillOperationError)
+        assert.equal(error.status, 400)
+        assert.equal(error.code, 'MARKET_NOT_INSTALLABLE')
+        assert.match(error.message, /never appear in the slash menu/)
+        assert.match(error.message, /description/)
+        return true
+      },
+    )
+
+    assert.equal(existsSync(join(root, 'demo')), false, 'a refused skill must not be published')
+    assert.deepEqual(await readdir(root), [], 'and nothing may be left in the scanned root')
+    assert.deepEqual(
+      await readdir(workDirectoryFor(root)).catch(() => []),
+      [],
+      'nor in the work directory',
+    )
+  })
+
+  it('installs a SKILL.md the harness will accept', async () => {
+    // The other half of the agreement, end to end: the same fixture the preview
+    // reader uses must still install.
+    const ok = '---\nname: demo\ndescription: A demo skill.\n---\n\n# Demo\n'
+    const files = [{ path: 'SKILL.md', size: Buffer.byteLength(ok), sha256: sha256Hex(ok) }]
+    setProviders({ clawhub: stubProvider({ files, contents: { 'SKILL.md': ok } }) })
+
+    const result = await installMarketSkill('clawhub', 'demo', { skillsRoot: root })
+    assert.equal(result.installedPath, join(root, 'demo'))
+    assert.equal(await readFile(join(root, 'demo', 'SKILL.md'), 'utf8'), ok)
+  })
+
   it('refuses a directory that already holds something else', async () => {
     await mkdir(join(root, 'demo'), { recursive: true })
     await writeFile(join(root, 'demo', 'SKILL.md'), 'someone else wrote this', 'utf8')

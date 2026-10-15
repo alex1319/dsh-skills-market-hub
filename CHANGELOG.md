@@ -1,5 +1,64 @@
 # 更新说明
 
+## 0.1.10
+
+**修复：插件会「成功」安装一个 harness 永远读不到的技能。**
+
+用户报告装了两个技能，`/` 菜单里一个都没有。排查后是两个**互不相关**的原因，其中一个是我这边的缺陷。
+
+### 成因一：菜单缓存（不是本插件的 bug）
+
+DSH 的**浏览器端**技能目录是**按会话缓存**的，只有两个事件会清掉它：
+
+```js
+ctx.remote.$on('agent-preset/selected', invalidate)
+ctx.on('connection/reset', clearAll)
+```
+
+文件系统变化**不在其中**。所以：**在会话打开期间安装的技能，不会出现在那个会话的 `/` 里** —— 菜单里是会话开始时抓取的那份快照。host 侧的 watcher 会刷新服务端目录，但浏览器已经在 `fetchCatalog(sessionId)` 里缓存了结果。
+
+因此「装了但看不到」的一半原因是**观测时机**，不是安装失败。重启客户端（触发 `connection/reset`）或新开会话（新 sessionId 无缓存）即可看到。
+
+### 成因二：SKILL.md 的 YAML 解析失败（本插件的缺陷）
+
+`a-stock-analysis` 的 frontmatter 是：
+
+```
+description: A股实时行情与分时量能分析。… Use when: (1) 查询A股实时行情, (2) 分析主力资金动向。
+```
+
+**YAML 的 plain scalar 不允许包含 `": "`**。harness 用的是真正的 YAML 解析器，于是抛出：
+
+```
+Nested mappings are not allowed in compact mappings at line 2, column 14
+```
+
+harness 捕获这个异常后**丢弃整个技能**，只留一行日志。所以这个技能**永远不会**出现在 `/` 里。
+
+而插件报告安装成功 —— 因为按它自己的定义确实成功了：文件全部写入、校验和全部匹配。**缺陷在于「成功」的定义里没有包含「唯一的消费者能读懂它」。**
+
+### 修复
+
+安装前校验 SKILL.md，规则与 harness 读取时一致：frontmatter fence、`name`/`description` 存在、`name` 符合 harness 的命名文法（`^[a-z0-9]+(?:-[a-z0-9]+)*$`）、以及 **plain scalar 中不出现 `": "`**。不通过就**拒绝安装**并说明原因，而不是静默装进去。
+
+**选择拒绝而不是自动修复**：插件的契约是「安装注册表发布的字节」。为了让某个注册表的缺陷绕过检查而悄悄改写作者的 `description`，会破坏这个契约，也会让溯源账本里的摘要与上游不一致。
+
+校验器是**行级**的（插件零运行时依赖，不能引入 YAML 库），并且刻意**偏保守**：块标量（`|` / `>`）的续行、引号包裹的值、flow 集合、带引号的 key、URL 和时间里的冒号都**不会**被误判 —— **误拒一个能用的技能，比漏掉一个不能用的更糟**。
+
+实测与 harness 的判定完全一致（5 个真实技能）：
+
+```
+a-stock-analysis        REFUSED  (harness 也丢弃它)
+anything-to-notebooklm  ACCEPTED
+official-document-skill ACCEPTED
+ppt-generator-skill     ACCEPTED
+superdesign             ACCEPTED
+```
+
+新增 10 条测试：真实破损样本被拒、真实完好样本通过、缺 name/description、缺 fence、name 文法、以及**七类不能误判的合法写法**（含块标量之后仍要继续扫描的边界）。
+
+> **已知未处理**：已经装上的那个 `a-stock-analysis` 仍然在磁盘上，且仍然不可用。要不要修（给 description 加引号）是用户的决定 —— 那会改动已安装技能的内容。
+
 ## 0.1.9
 
 **修复：发现页的「安装」按钮点了没反应。**

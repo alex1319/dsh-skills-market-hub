@@ -70,4 +70,31 @@ export interface SkillHeadline {
  * untitled empty row would make it look broken.
  */
 export declare function skillHeadline(content: string, fallbackName?: string): SkillHeadline;
+/**
+ * Why the harness would refuse this document, or `undefined` when it would accept it.
+ *
+ * The plugin's own reader ({@link splitFrontmatter}) is **deliberately permissive**:
+ * an exotic construct degrades to a plain scalar, because one unusual key must not
+ * hide a whole skill from the preview. The harness's reader is the opposite — a full
+ * YAML parser that drops the entire skill on any error, leaving only a log line.
+ *
+ * That asymmetry has a concrete cost. A skill was installed from SkillHub whose
+ * frontmatter read:
+ *
+ *     description: A股实时行情… Use when: (1) 查询A股实时行情, …
+ *
+ * A plain YAML scalar may not contain `": "`. The harness's parse threw, the skill
+ * was skipped with a warning nobody reads, and the slash menu simply never showed
+ * it. The install had reported success, because by the plugin's own definition it
+ * was one: every file was written and every checksum matched.
+ *
+ * So this check makes "the harness can read it" part of what a successful install
+ * means. It refuses rather than repairs: the plugin's contract is to install the
+ * bytes the registry published, and quietly rewriting an author's `description` to
+ * work around a registry defect would break exactly that promise.
+ *
+ * @param content - the whole `SKILL.md`.
+ * @returns a short reason, phrased to follow "…would be ignored by the harness:".
+ */
+export declare function skillReadinessIssue(content: string): string | undefined;
 //# sourceMappingURL=frontmatter.d.ts.map

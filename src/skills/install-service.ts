@@ -26,7 +26,7 @@ import { createHash, randomUUID } from 'node:crypto'
 // namespace shadowed by accident is a mistake that only surfaces at runtime.
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
-import { skillHeadline } from '../market/frontmatter.ts'
+import { skillHeadline, skillReadinessIssue } from '../market/frontmatter.ts'
 import { getMarketSkillDetail, installedLookup, provider, applyFileLimits } from '../market/market-service.ts'
 import {
   MARKET_LIMITS,
@@ -612,6 +612,22 @@ async function performInstall(
       const digest = sha256Hex(fetched.content)
       if (file.sha256 !== undefined && file.sha256 !== digest) {
         throw new SkillOperationError(502, OPERATION_CODES.checksumMismatch, `the file ${file.path} does not match the checksum the registry published`)
+      }
+
+      // Checked before anything is written, and only for the root document: this
+      // is the file the harness reads to decide whether the directory is a skill
+      // at all. Installing a skill the harness will silently drop is the one
+      // outcome worse than refusing it — the reader gets a success, and then an
+      // empty slash menu with nothing to explain it.
+      if (file.path.toLowerCase() === 'skill.md') {
+        const issue = skillReadinessIssue(fetched.content)
+        if (issue !== undefined) {
+          throw new SkillOperationError(
+            400,
+            OPERATION_CODES.notInstallable,
+            `the skill's SKILL.md would be ignored by the harness, so it would never appear in the slash menu: ${issue}`,
+          )
+        }
       }
 
       const filePath = resolveInside(staging, ...file.path.split('/'))

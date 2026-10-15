@@ -18,6 +18,7 @@ import {
   metaString,
   metaStringList,
   skillHeadline,
+  skillReadinessIssue,
   splitFrontmatter,
   toSummary,
 } from '../lib/market/frontmatter.js'
@@ -288,5 +289,105 @@ describe('summary clipping', () => {
     assert.ok(summary.length <= 51, `unexpected length ${summary.length}`)
     assert.ok(summary.endsWith('…'))
     assert.ok(!summary.includes('  '))
+  })
+})
+
+/**
+ * Whether the harness will actually accept the document.
+ *
+ * This is the check that makes "the harness can read it" part of a successful
+ * install. Its whole value is agreeing with a *different* parser, so the cases
+ * below are written as the two halves of that agreement: what the harness drops,
+ * and — just as important — what it does not.
+ *
+ * The false-positive half matters more than it looks. A wrong refusal blocks an
+ * install that would have worked, which is a regression the reader cannot work
+ * around; a wrong acceptance merely reproduces the bug being fixed.
+ */
+describe('install readiness', () => {
+  /** The exact frontmatter that broke a real install, trimmed to its essentials. */
+  const BROKEN_REAL_WORLD = [
+    '---',
+    'name: a-stock-analysis',
+    'description: A股实时行情与分时量能分析。获取沪深股票实时价格、涨跌、成交量。Use when: (1) 查询A股实时行情, (2) 分析主力资金动向。',
+    '---',
+    '',
+    '# 股票分析',
+  ].join('\n')
+
+  it('accepts a real ClawHub SKILL.md', () => {
+    assert.equal(skillReadinessIssue(REAL_SKILL), undefined)
+  })
+
+  it('refuses the unquoted ": " that a registry actually published', () => {
+    // `description: … Use when: (1) …` — YAML reads the second colon as the start
+    // of a nested mapping and throws. The harness then drops the whole skill with
+    // a log line, which is how a "successful" install became an invisible one.
+    const issue = skillReadinessIssue(BROKEN_REAL_WORLD)
+    assert.ok(issue !== undefined, 'this document must be refused')
+    assert.match(issue, /description/)
+    assert.match(issue, /": "/)
+  })
+
+  it('refuses a document the harness cannot find a name or description in', () => {
+    assert.match(skillReadinessIssue('---\nname: x\n---\n') ?? '', /description/)
+    assert.match(skillReadinessIssue('---\ndescription: x\n---\n') ?? '', /`name`/)
+  })
+
+  it('refuses a document with no frontmatter or an unclosed fence', () => {
+    assert.match(skillReadinessIssue('# Just a body\n') ?? '', /fence/)
+    assert.match(skillReadinessIssue('---\nname: x\ndescription: y\n') ?? '', /never closed/)
+  })
+
+  it('refuses a name the slash menu could not address', () => {
+    // The harness's own grammar; `/My Skill` is not a command.
+    assert.match(skillReadinessIssue('---\nname: My Skill\ndescription: y\n---\n') ?? '', /lowercase hyphenated/)
+    assert.match(skillReadinessIssue('---\nname: Demo\ndescription: y\n---\n') ?? '', /lowercase hyphenated/)
+  })
+
+  it('accepts the legal places a colon may appear', () => {
+    // Each of these is a construct where ": " is not a plain scalar, and a check
+    // that refused them would block perfectly good skills.
+    const cases = {
+      'double-quoted value': '---\nname: demo\ndescription: "a: b"\n---\n',
+      'single-quoted value': "---\nname: demo\ndescription: 'a: b'\n---\n",
+      'flow mapping': '---\nname: demo\ndescription: y\nmetadata: {a: 1, b: 2}\n---\n',
+      'flow sequence': '---\nname: demo\ndescription: y\nkeywords: [a: 1]\n---\n',
+      'a URL, where the colon has no space after it': '---\nname: demo\ndescription: y\nhomepage: https://example.com/a\n---\n',
+      'a time, where the colon has no space after it': '---\nname: demo\ndescription: y\ntime: 12:30\n---\n',
+      'a quoted key that itself contains a colon': '---\nname: demo\ndescription: y\n"a: b": c\n---\n',
+      'a block scalar whose content is full of colons': [
+        '---', 'name: demo', 'description: |', '  Step one: do it.', '  Step two: done.', '---', '',
+      ].join('\n'),
+      'a folded block scalar': [
+        '---', 'name: demo', 'description: >', '  Note: folded.', '---', '',
+      ].join('\n'),
+    }
+    for (const [label, content] of Object.entries(cases)) {
+      assert.equal(skillReadinessIssue(content), undefined, `${label} must be accepted`)
+    }
+  })
+
+  it('still scans past a block scalar to the mapping that follows it', () => {
+    // The skip must be scoped: a bad line *after* a block scalar is still bad.
+    const content = [
+      '---',
+      'name: demo',
+      'description: |',
+      '  Fine: this is content.',
+      'summary: Bad: this is not.',
+      '---',
+      '',
+    ].join('\n')
+    assert.match(skillReadinessIssue(content) ?? '', /summary/)
+  })
+
+  it('reads the same document the permissive preview reader reads', () => {
+    // Agreement check: the splitter is happy with the broken document — which is
+    // exactly why the readiness check has to exist separately from it.
+    const parsed = splitFrontmatter(BROKEN_REAL_WORLD)
+    assert.equal(parsed.meta.name, 'a-stock-analysis')
+    assert.ok(typeof parsed.meta.description === 'string')
+    assert.ok(skillReadinessIssue(BROKEN_REAL_WORLD) !== undefined)
   })
 })
